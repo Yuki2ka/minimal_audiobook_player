@@ -1,6 +1,6 @@
 # Minimal Audiobook Player
 
-A dependency-free Android audiobook player: **21 Java classes, no libraries at all**
+A dependency-free Android audiobook player: **23 Java classes, no libraries at all**
 (no AndroidX, no Kotlin runtime, no image loaders), a **172 KB APK**, and a UI built
 for imprecise fingers on small, old phones.
 
@@ -12,11 +12,11 @@ for imprecise fingers on small, old phones.
 ## Install the test build
 
 ```
-artifacts/MinimalAudiobookPlayer-1.0.0.apk
+artifacts/MinimalAudiobookPlayer-1.2.0.apk
 ```
 
 ```bash
-adb install -r artifacts/MinimalAudiobookPlayer-1.0.0.apk
+adb install -r artifacts/MinimalAudiobookPlayer-1.2.0.apk
 ```
 
 Or copy the APK to the phone and open it (Android will ask to allow installing
@@ -36,7 +36,7 @@ decline, the app offers its own app-specific folder, which needs no permission.
 |--------|-----------|
 | **All files** (tab 1) | One flat list of every audio file under the root folder, sorted naturally *ignoring folders*. The file that is playing is pinned to the top: when a file finishes it moves to the bottom and the next one rises to the top. |
 | **Folders** (tab 2) | Folder explorer with sub-folders, per-folder file counts, breadcrumb path, and an up button. Each folder reopens at the last file you played in it. |
-| **Settings** (tab 3) | Rescan first, then the folder card: storage access (only while it is missing), one-tap **Music / Books / Downloads / SD card** folders, the built-in folder picker and the recent-folder list (tap to switch, trash to forget); then seek step 1–60 s, "delete without confirmation", keep screen on, clear all saved positions, about. |
+| **Settings** (tab 3) | Rescan first, then the folder card: storage access (only while it is missing), one-tap **Music / Books / Downloads / SD card** folders, the built-in folder picker and the recent-folder list (tap to switch, trash to forget); then seek step 1–60 s, "delete without confirmation", keep screen on, **volume keys seek while the screen is off**, clear all saved positions, about. |
 
 Swipe left/right to change pages; the tab bar does the same. Back goes
 settings → all files, and folders → parent folder → all files.
@@ -50,9 +50,10 @@ settings → all files, and folders → parent folder → all files.
 [prev]  [- 10 s]  [+ 10 s]  [next]
 ```
 
-* **Proportional seek pads** — tap (or drag) near the middle of the pad for a
-  2 s nudge, farther out for up to 60 s. The pad shows the amount live and
-  resets to "2–60 s" when released.
+* **Proportional seek pads** — tap (or drag) near the play button for a 2 s
+  nudge, farther outwards for up to 60 s; both pads grow away from the button
+  (the left one is mirrored). The pad shows the amount live and resets to
+  "2–60 s" when released.
 * **Play/Pause** is icon-only and centred between the two pads.
 * **−N s / +N s** use the step from settings (long-press them for a full minute).
 * The file name is deliberately not repeated here: the playing file is pinned to
@@ -61,6 +62,20 @@ settings → all files, and folders → parent folder → all files.
 Every row of both lists is at least 64 dp tall and the delete button is its own
 48×48 dp target on the right, so tapping a row to play almost never deletes it.
 Deleting asks yes/no unless you switch the confirmation off in settings.
+
+## Volume keys in the dark
+
+In Settings you can turn on **"Volume keys seek (screen off)"**. While the screen
+is off and audio is playing, a **short press** of a volume key seeks by the
+configured step (10 s by default) instead of changing the volume — no need to
+find the phone or wake it. **Holding** a key still changes the volume, and with
+the screen on the keys behave normally (system volume panel included).
+
+The app captures the keys through a framework `MediaSession` with a remote
+`VolumeProvider`, and distinguishes "tap" from "hold" by timing: a lone press
+is applied after ~0.6 s, a repeat cancels the seek and becomes a volume gesture.
+Because there is no foreground service, this only works while the playback
+process is alive — Android may end it if it aggressively reclaims memory.
 
 ## Storage access per Android version
 
@@ -158,6 +173,10 @@ docs/ARCHITECTURE.md           internals and design rationale
 * **No foreground service**, so Android may kill playback in the background on
   aggressive OEM ROMs, and there are no lock-screen or notification controls.
   Headphone unplugging pauses playback; Bluetooth media buttons are not handled.
+  The volume-key feature depends on the same process staying alive.
+* Volume-key capture was **not verified on a device** (no emulator here). If a
+  ROM does not forward volume keys to a media session, a hold may seek once
+  instead of changing the volume.
 * Deleting files uses the file-system API, so on Android 11+ it needs
   "all files access". The read-only fallback can play but may not delete.
 * Positions are keyed by content: two byte-identical copies of the same file

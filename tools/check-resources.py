@@ -117,6 +117,14 @@ for match in re.finditer(r"getString\(\s*R\.string\.(\w+)", java_text):
         problems.append(f"getString(R.string.{name}) takes {needed} format argument(s) "
                         f"but the call passes {passed}")
 
+# A SeekPad without padDirection silently defaults to "forward", which is how the
+# back pad ended up seeking forward once; require the attribute explicitly.
+for xml_path in layout_files:
+    xml_text = open(xml_path, encoding="utf-8").read()
+    for element in re.findall(r"<io\.github\.yuki2ka\.audiobookplayer\.ui\.SeekPad\b[^>]*>", xml_text):
+        if "padDirection" not in element:
+            problems.append(f"{os.path.basename(xml_path)}: SeekPad without app:padDirection")
+
 # Every @layout/... include must resolve.
 for name in sorted(set(re.findall(r'@layout/(\w+)', layout_text))):
     if name not in defined["layout"]:

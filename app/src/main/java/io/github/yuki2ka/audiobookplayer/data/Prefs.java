@@ -21,6 +21,7 @@ public final class Prefs {
     private static final String KEY_SEEK_STEP = "seek_step_seconds";
     private static final String KEY_NO_CONFIRM = "delete_without_confirm";
     private static final String KEY_KEEP_AWAKE = "keep_screen_on";
+    private static final String KEY_VOLUME_SEEK = "volume_keys_seek";
     private static final String KEY_LAST_FILE = "last_file";
     private static final String KEY_LAST_MODE = "last_mode";
     private static final String KEY_LAST_FOLDER = "last_folder";
@@ -121,6 +122,18 @@ public final class Prefs {
 
     public void setDeleteWithoutConfirm(boolean value) {
         prefs.edit().putBoolean(KEY_NO_CONFIRM, value).apply();
+    }
+
+    /**
+     * When enabled, the hardware volume keys seek (by the configured step)
+     * while the screen is off; holding a key still changes the volume.
+     */
+    public boolean volumeKeysSeek() {
+        return prefs.getBoolean(KEY_VOLUME_SEEK, false);
+    }
+
+    public void setVolumeKeysSeek(boolean value) {
+        prefs.edit().putBoolean(KEY_VOLUME_SEEK, value).apply();
     }
 
     public boolean keepScreenOn() {

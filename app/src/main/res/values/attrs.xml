@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- SeekPad: -1 = "back" (bigger amount towards the outer edge), +1 = "forward".
+         Declared in XML so a pad can never be built with the wrong direction by
+         forgetting a Java call. -->
+    <declare-styleable name="SeekPad">
+        <attr name="padDirection" format="integer" />
+    </declare-styleable>
+</resources>

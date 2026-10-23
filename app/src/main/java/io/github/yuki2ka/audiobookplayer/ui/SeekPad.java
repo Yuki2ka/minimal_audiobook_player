@@ -2,6 +2,7 @@ package io.github.yuki2ka.audiobookplayer.ui;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.content.res.TypedArray;
 import android.graphics.Typeface;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -52,6 +53,13 @@ public final class SeekPad extends FrameLayout {
         super(context, attrs);
         colorIdle = context.getColor(R.color.text_secondary);
         colorActive = context.getColor(R.color.accent);
+        // Read the direction before building the views: it decides the arrow.
+        TypedArray typed = context.obtainStyledAttributes(attrs, R.styleable.SeekPad);
+        try {
+            direction = typed.getInt(R.styleable.SeekPad_padDirection, 1) >= 0 ? 1 : -1;
+        } finally {
+            typed.recycle();
+        }
 
         setClickable(true);
         setBackgroundResource(R.drawable.bg_button_soft);
@@ -168,8 +176,7 @@ public final class SeekPad extends FrameLayout {
         if (width <= 0) {
             return;
         }
-        float fraction = direction > 0 ? x / width : (width - x) / width;
-        int next = SeekCurve.secondsFor(fraction);
+        int next = SeekCurve.secondsFor(SeekCurve.fraction(direction, x, width));
         if (next != seconds) {
             setSeconds(next);
         }

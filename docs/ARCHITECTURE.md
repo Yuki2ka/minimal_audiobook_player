@@ -165,6 +165,26 @@ permission the platform offers. Returning from the system screen without
 granting falls back to audio-only read access once, so the app can still play
 even when folder listing stays restricted.
 
+## Volume keys (`playback/VolumeKeySeeker`)
+
+Owned by `PlayerEngine` (one per process), constructed with a `Target` that maps
+to `position()`, `duration()` and `seekTo()`.
+
+* `setPlaying(boolean)` is called on every playback transition; `refresh()`
+  decides whether to activate.
+* Active only when **playing && screen off && the setting is on**. The screen
+  state comes from a dynamically registered `ACTION_SCREEN_ON/OFF` receiver and
+  `PowerManager.isInteractive()`.
+* Activation = framework `MediaSession` (created lazily, only when first needed)
+  with `setPlaybackToRemote(VolumeProvider(RELATIVE, …))` and `setActive(true)`.
+  The system then routes the volume rocker to `onAdjustVolume()` instead of the
+  stream. Deactivation restores stock behaviour, including the volume panel.
+* Short press vs. hold: `onAdjustVolume` has no key-up, so the first event arms
+  a 600 ms timer (longer than the platform repeat delay). Timer fires → seek by
+  `Prefs.seekStep()` through `SeekCurve.steppedPosition`. A second event before
+  that cancels the seek and adjusts `STREAM_MUSIC` instead, continuing until
+  500 ms of silence.
+
 ## Threading summary
 
 | Work | Thread |

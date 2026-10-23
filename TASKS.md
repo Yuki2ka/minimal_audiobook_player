@@ -3,6 +3,14 @@
 > Updated as work progresses. See [PROGRESS.md](PROGRESS.md) for milestones and
 > verified build/test results.
 
+## v1.2 — done
+
+- [x] Left (back) pad mirrored: minimum next to the play button, maximum at the
+      outer edge, arrow pointing left. Direction declared in the layout and
+      guarded by `check-resources.py`.
+- [x] Optional **volume keys seek while the screen is off** (Settings toggle);
+      holding a key still changes the volume, screen-on behaviour unchanged.
+
 ## v1.1 — done
 
 - [x] Transport panel: times `played · total · remaining`, no title/status, no
@@ -31,7 +39,7 @@
 
 ## Next: on-device QA (needs a phone or emulator; none in this sandbox)
 
-1. Install `artifacts/MinimalAudiobookPlayer-1.1.0.apk` on **Android 7** (the
+1. Install `artifacts/MinimalAudiobookPlayer-1.2.0.apk` on **Android 7** (the
    minimum) and on **Android 13/14**, then walk through:
    - first launch → permission card → grant → scan;
    - decline the permission and use the app folder;
@@ -44,13 +52,19 @@
    - press the pads near the middle (≈2–6 s) and near the outer edge (≈40–60 s),
      and drag inside a pad;
    - use Music / Books / Downloads (and SD card if present) quick picks, and the
-     recent-folder list: tap to switch, trash to remove.
+     recent-folder list: tap to switch, trash to remove;
+   - on both pads: nearest-to-button is the smallest seek, outer edge the
+     largest, and the back pad moves backwards;
+   - enable "Volume keys seek (screen off)", start playback, turn the screen off:
+     short press should seek by the configured step, a long press should change
+     the volume, and with the screen on the keys must behave normally.
 2. Check the log for `MediaPlayer` errors, and that background playback survives a
    screen-off period on the target device.
 
 ## Backlog (post-v1, deliberately out of scope now)
 
 - [ ] Foreground playback service + media notification (survives process kill).
+      Would also make the volume-key capture reliable in the background.
 - [ ] Bluetooth/media-button handling via `MediaSession` (framework only is possible
       with `MediaSession`, but it is more code than v1 needs).
 - [ ] Sleep timer.

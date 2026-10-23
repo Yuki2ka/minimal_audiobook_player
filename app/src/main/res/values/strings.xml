@@ -85,6 +85,8 @@
     <string name="settings_delete_no_confirm_hint">The trash button removes files immediately. There is no undo.</string>
     <string name="settings_keep_awake">Keep screen on while playing</string>
     <string name="settings_keep_awake_hint">Only while audio is playing.</string>
+    <string name="settings_volume_keys">Volume keys seek (screen off)</string>
+    <string name="settings_volume_keys_hint">Short press = \u2212 / + step, like the pads. Hold = still changes the volume. Screen on: keys work normally.</string>
     <string name="settings_positions">Playback positions</string>
     <string name="settings_positions_hint">Saved for every file and removed automatically once a file is finished.</string>
     <string name="clear_positions">Clear all saved positions</string>

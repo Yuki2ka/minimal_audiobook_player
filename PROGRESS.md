@@ -5,7 +5,7 @@ Next-step pointer lives in [TASKS.md](TASKS.md).
 
 Project: **Minimal Audiobook Player** — a dependency-free Android audiobook player
 (minSdk 24 / Android 7.0, targetSdk 34), package `io.github.yuki2ka.audiobookplayer`,
-version 1.1.0.
+version 1.2.0.
 
 ## Milestones
 
@@ -27,15 +27,16 @@ version 1.1.0.
 | 13 | Documentation (README, architecture, build, install) | ✅ |
 | 14 | UI pass: proportional seek pads, icon-only play, compact panel | ✅ |
 | 15 | Settings pass: rescan first, quick folders, recent paths, green access state | ✅ |
+| 16 | Pad geometry fix (mirrored back pad) + volume-key seeking (opt-in) | ✅ |
 
 ## Verification (last run)
 
 | Check | Result |
 |-------|--------|
-| `tools/run-tests.sh` | **358 assertions, 0 failed** (locale forced to UTF-8) |
-| `tools/check-resources.py` | 77 ids, 10 layouts, 107 strings, 28 drawables — all references resolve |
-| `tools/build-apk.sh` | `artifacts/MinimalAudiobookPlayer-1.1.0.apk`, **184 KB**, 52 entries |
-| Manifest / badging | package correct, versionCode 2, versionName 1.1.0, **sdkVersion 24**, target 34, launcher `MainActivity` |
+| `tools/run-tests.sh` | **399 assertions, 0 failed** (locale forced to UTF-8) |
+| `tools/check-resources.py` | 79 ids, 10 layouts, 109 strings, 28 drawables — all references resolve |
+| `tools/build-apk.sh` | `artifacts/MinimalAudiobookPlayer-1.2.0.apk`, **192 KB** |
+| Manifest / badging | package correct, versionCode 3, versionName 1.2.0, **sdkVersion 24**, target 34, launcher `MainActivity` |
 | DEX | dex 037, 96,788 B; no AndroidX, no Kotlin, no `java.time` / `java.nio.file` / streams / `Optional` references (API 24 safe) |
 | Signature | `apksigner verify`: v2 + v3 true, `CN=Android Debug` (RSA-2048) |
 | Alignment | `zipalign -c -v -p 4`: successful |
@@ -119,10 +120,29 @@ JAVA_HOME=/tmp/toolchain/jdk-17.0.20.1+1 ANDROID_HOME=/tmp/sdk ./tools/build-apk
   tap would have seeked 2 s); switching the root folder no longer stops playback
   of a file that still exists.
 
+## 1.2.0 changes
+
+- **Back pad was mirrored twice**: `setDirection(-1)` was never called on the
+  left pad, so it drew a "forward" arrow *and* seeked forwards. The direction is
+  now declared in the layout (`app:padDirection="-1"`), parsed through a
+  `declare-styleable`, and the 0..1 mapping lives in the tested
+  `SeekCurve.fraction(direction, x, width)`. `check-resources.py` fails if a
+  `SeekPad` in any layout omits the attribute.
+- **Volume keys seek while the screen is off** (opt-in): `playback/VolumeKeySeeker`
+  activates a framework `MediaSession` with a remote `VolumeProvider` only while
+  (playing && screen off && enabled). Short press seeks by the configured step;
+  an early repeat cancels the seek and switches to stream-volume for the rest of
+  the hold. Screen on → session inactive, keys keep stock behaviour.
+- Step seeking (pads, ± buttons, volume keys) now shares
+  `SeekCurve.steppedPosition()` and is covered by tests.
+
 ## Known risks (device-only)
 
 - No emulator/adb in the sandbox, so runtime flows are reviewed but not executed:
   permission dialogs, MediaPlayer focus changes, delete confirmation, list recycling.
 - Background playback has no foreground service, so aggressive OEM ROMs may kill it.
+- Volume-key capture (`MediaSession` + `VolumeProvider`) could not be tried on a
+  device: whether a ROM forwards the rocker to the session, and the exact
+  short/hold timing, are unverified.
 
 Details of the internals: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

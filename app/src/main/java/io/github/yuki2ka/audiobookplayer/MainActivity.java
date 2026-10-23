@@ -36,6 +36,7 @@ import io.github.yuki2ka.audiobookplayer.ui.FolderBrowser;
 import io.github.yuki2ka.audiobookplayer.ui.SeekPad;
 import io.github.yuki2ka.audiobookplayer.ui.SwipePager;
 import io.github.yuki2ka.audiobookplayer.util.Fingerprint;
+import io.github.yuki2ka.audiobookplayer.util.SeekCurve;
 import io.github.yuki2ka.audiobookplayer.util.Storage;
 import io.github.yuki2ka.audiobookplayer.util.TimeFormat;
 
@@ -116,6 +117,7 @@ public final class MainActivity extends Activity implements
     private SeekBar settingsSeekBar;
     private Switch settingsDeleteSwitch;
     private Switch settingsKeepAwakeSwitch;
+    private Switch settingsVolumeKeysSwitch;
 
     private AudioFileAdapter adapter;
     private FolderBrowser browser;
@@ -351,6 +353,7 @@ public final class MainActivity extends Activity implements
         settingsSeekBar = findViewById(R.id.settings_seek_bar);
         settingsDeleteSwitch = findViewById(R.id.settings_delete_switch);
         settingsKeepAwakeSwitch = findViewById(R.id.settings_keep_awake_switch);
+        settingsVolumeKeysSwitch = findViewById(R.id.settings_volume_keys_switch);
 
         emptySettings.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -542,7 +545,8 @@ public final class MainActivity extends Activity implements
         if (current == null || durationMs <= 0) {
             return;
         }
-        int target = (int) TimeFormat.clamp(engine.position() + deltaMs, 0, durationMs);
+        int target = SeekCurve.steppedPosition(
+                engine.position(), deltaMs >= 0 ? 1 : -1, (int) Math.abs(deltaMs), durationMs);
         engine.seekTo(target);
         seekBar.setProgress(target);
         updateTimeLabels(target, durationMs);
@@ -1145,6 +1149,22 @@ public final class MainActivity extends Activity implements
                         }
                     }
                 });
+        settingsVolumeKeysSwitch.setOnCheckedChangeListener(
+                new android.widget.CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(android.widget.CompoundButton button, boolean checked) {
+                        if (!bindingSettings) {
+                            prefs.setVolumeKeysSeek(checked);
+                            engine.volumeKeys().refresh();
+                        }
+                    }
+                });
+        findViewById(R.id.settings_volume_keys_row).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                settingsVolumeKeysSwitch.toggle();
+            }
+        });
         findViewById(R.id.settings_delete_row).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1237,6 +1257,7 @@ public final class MainActivity extends Activity implements
         settingsSeekValue.setText(getString(R.string.settings_seek_value, step));
         settingsDeleteSwitch.setChecked(prefs.deleteWithoutConfirm());
         settingsKeepAwakeSwitch.setChecked(prefs.keepScreenOn());
+        settingsVolumeKeysSwitch.setChecked(prefs.volumeKeysSeek());
         // With full access the whole notification block disappears and the card
         // gets a green outline instead: less text, one glance is enough.
         int access = Storage.accessLevel(this);

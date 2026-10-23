@@ -44,6 +44,7 @@ public final class PlayerEngine {
 
     private final Context context;
     private final AudioManager audioManager;
+    private final VolumeKeySeeker volumeKeys;
 
     private MediaPlayer player;
     private Listener listener;
@@ -109,7 +110,29 @@ public final class PlayerEngine {
     public PlayerEngine(Context context) {
         this.context = context.getApplicationContext();
         this.audioManager = (AudioManager) this.context.getSystemService(Context.AUDIO_SERVICE);
+        // Volume keys seek while the screen is off (opt-in in Settings).
+        this.volumeKeys = new VolumeKeySeeker(this.context, new VolumeKeySeeker.Target() {
+            @Override
+            public int position() {
+                return PlayerEngine.this.position();
+            }
+
+            @Override
+            public int duration() {
+                return PlayerEngine.this.duration();
+            }
+
+            @Override
+            public void seekTo(int positionMs) {
+                PlayerEngine.this.seekTo(positionMs);
+            }
+        });
         registerNoisyReceiver();
+    }
+
+    /** Volume-key bridge, so Settings can re-evaluate the option immediately. */
+    public VolumeKeySeeker volumeKeys() {
+        return volumeKeys;
     }
 
     private void registerNoisyReceiver() {
@@ -210,6 +233,7 @@ public final class PlayerEngine {
                         return;
                     }
                     state = ENDED;
+                    volumeKeys.setPlaying(false);
                     abandonFocus();
                     notifyState(false);
                     if (listener != null) {
@@ -224,6 +248,7 @@ public final class PlayerEngine {
                         return true;
                     }
                     state = ERROR;
+                    volumeKeys.setPlaying(false);
                     abandonFocus();
                     if (listener != null) {
                         listener.onError(what, extra);
@@ -234,6 +259,7 @@ public final class PlayerEngine {
             created.prepareAsync();
         } catch (IOException | IllegalStateException | IllegalArgumentException e) {
             state = ERROR;
+            volumeKeys.setPlaying(false);
             stopAndRelease();
             if (listener != null) {
                 listener.onError(MediaPlayer.MEDIA_ERROR_UNKNOWN, 0);
@@ -262,6 +288,7 @@ public final class PlayerEngine {
         try {
             player.start();
             state = PLAYING;
+            volumeKeys.setPlaying(true);
             notifyState(true);
         } catch (IllegalStateException ignored) {
             // The player was released in the meantime.
@@ -292,6 +319,7 @@ public final class PlayerEngine {
         try {
             player.pause();
             state = PAUSED;
+            volumeKeys.setPlaying(false);
             notifyState(false);
         } catch (IllegalStateException ignored) {
             // Ignore races with completion.
@@ -337,6 +365,7 @@ public final class PlayerEngine {
         path = null;
         ducked = false;
         pausedForFocus = false;
+        volumeKeys.setPlaying(false);
         abandonFocus();
     }
 

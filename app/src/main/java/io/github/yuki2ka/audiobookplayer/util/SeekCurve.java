@@ -17,6 +17,25 @@ public final class SeekCurve {
     private SeekCurve() {
     }
 
+    /**
+     * Position of a touch inside a pad as 0..1, measured from the edge that
+     * faces the play button: 0 next to the button, 1 at the outer edge.
+     *
+     * <p>Both pads therefore grow outwards: the forward pad counts up to the
+     * right, the back pad counts up to the left (mirrored).</p>
+     *
+     * @param direction {@code -1} for the back pad, {@code +1} for the forward pad
+     * @param x         touch position inside the pad, in pixels
+     * @param width     pad width, in pixels
+     */
+    public static float fraction(int direction, float x, int width) {
+        if (width <= 0) {
+            return 0f;
+        }
+        float value = direction > 0 ? x / width : (width - x) / width;
+        return value < 0f ? 0f : (value > 1f ? 1f : value);
+    }
+
     /** {@code fraction} is clamped to 0..1; the result is 2..60 seconds. */
     public static int secondsFor(float fraction) {
         float clamped = fraction < 0f ? 0f : (fraction > 1f ? 1f : fraction);
@@ -26,5 +45,27 @@ public final class SeekCurve {
 
     public static long millisecondsFor(float fraction) {
         return secondsFor(fraction) * 1000L;
+    }
+
+    /**
+     * Target position for a "+/- step" action (the -N/+N buttons, the volume
+     * keys), clamped to the track.
+     *
+     * @param position  current position in ms
+     * @param direction {@code -1} back, {@code +1} forward
+     * @param stepMs    step size in ms
+     * @param duration  track duration in ms (0 or less = unknown, no seek)
+     */
+    public static int steppedPosition(int position, int direction, int stepMs, int duration) {
+        if (duration <= 0) {
+            return position;
+        }
+        long target = (long) position + (long) (direction >= 0 ? 1 : -1) * stepMs;
+        if (target < 0) {
+            target = 0;
+        } else if (target > duration) {
+            target = duration;
+        }
+        return (int) target;
     }
 }

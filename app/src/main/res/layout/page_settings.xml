@@ -287,6 +287,49 @@
                     android:layout_height="wrap_content"
                     android:showText="false" />
             </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="6dp"
+                android:background="@color/divider" />
+
+            <LinearLayout
+                android:id="@+id/settings_volume_keys_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="56dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingTop="8dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="8dp">
+
+                    <TextView
+                        style="@style/SettingTitle"
+                        android:text="@string/settings_volume_keys" />
+
+                    <TextView
+                        style="@style/SettingSummary"
+                        android:text="@string/settings_volume_keys_hint" />
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/settings_volume_keys_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:showText="false" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- 5. Playback positions -->

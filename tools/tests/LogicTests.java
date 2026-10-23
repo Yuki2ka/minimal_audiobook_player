@@ -147,6 +147,44 @@ public final class LogicTests {
             previous = value;
         }
         eq("curve milliseconds", 60000L, SeekCurve.millisecondsFor(1f));
+
+        // Step seek (volume keys, -N/+N buttons) is clamped to the track.
+        eq("step forward", 60000, SeekCurve.steppedPosition(50000, 1, 10000, 300000));
+        eq("step back", 40000, SeekCurve.steppedPosition(50000, -1, 10000, 300000));
+        eq("step back clamps at 0", 0, SeekCurve.steppedPosition(3000, -1, 10000, 300000));
+        eq("step forward clamps at the end",
+                300000, SeekCurve.steppedPosition(295000, 1, 10000, 300000));
+        eq("unknown duration keeps the position",
+                50000, SeekCurve.steppedPosition(50000, 1, 10000, 0));
+        eq("zero direction counts as forward",
+                60000, SeekCurve.steppedPosition(50000, 0, 10000, 300000));
+        eq("huge step clamps", 300000, SeekCurve.steppedPosition(0, 1, Integer.MAX_VALUE, 300000));
+
+        // Pad geometry: 0 next to the play button, 1 at the outer edge, on both
+        // sides. The back pad is the forward pad mirrored.
+        eq("forward at inner edge", 0f, SeekCurve.fraction(1, 0f, 200));
+        eq("forward at outer edge", 1f, SeekCurve.fraction(1, 200f, 200));
+        eq("forward in the middle", 0.5f, SeekCurve.fraction(1, 100f, 200));
+        eq("back at inner edge", 0f, SeekCurve.fraction(-1, 200f, 200));
+        eq("back at outer edge", 1f, SeekCurve.fraction(-1, 0f, 200));
+        eq("back in the middle", 0.5f, SeekCurve.fraction(-1, 100f, 200));
+        for (int i = 0; i <= 20; i++) {
+            float x = i * 10f;
+            check("mirrored at x=" + x,
+                    Math.abs(SeekCurve.fraction(1, x, 200) - SeekCurve.fraction(-1, 200 - x, 200)) < 1e-6);
+        }
+        eq("fraction clamps negative x", 0f, SeekCurve.fraction(1, -50f, 200));
+        eq("fraction clamps past the edge", 1f, SeekCurve.fraction(1, 500f, 200));
+        eq("fraction with zero width", 0f, SeekCurve.fraction(-1, 10f, 0));
+        // The tap nearest the play button must be the smallest seek on both sides.
+        eq("back: inner edge = min", SeekCurve.MIN_SECONDS,
+                SeekCurve.secondsFor(SeekCurve.fraction(-1, 200f, 200)));
+        eq("back: outer edge = max", SeekCurve.MAX_SECONDS,
+                SeekCurve.secondsFor(SeekCurve.fraction(-1, 0f, 200)));
+        eq("forward: inner edge = min", SeekCurve.MIN_SECONDS,
+                SeekCurve.secondsFor(SeekCurve.fraction(1, 0f, 200)));
+        eq("forward: outer edge = max", SeekCurve.MAX_SECONDS,
+                SeekCurve.secondsFor(SeekCurve.fraction(1, 200f, 200)));
         // The default 10 s step is reachable with a comfortable touch.
         boolean reachable = false;
         for (int i = 0; i <= 100; i++) {
