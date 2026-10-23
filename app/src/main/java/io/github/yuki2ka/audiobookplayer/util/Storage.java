@@ -40,9 +40,11 @@ public final class Storage {
     /** Full access, including deleting audio files. */
     public static final int ACCESS_FULL = 2;
 
-    private static final String[] COMMON_FOLDER_NAMES = {
-            "Audiobooks", "Audiobook", "AudioBooks", "audiobooks", "Books", "Hörbücher", "Audiolibros"
-    };
+    /** Where people keep audiobooks: preferred default and quick-pick folder. */
+    public static final String BOOKS = "Books";
+    private static final String MUSIC = "Music";
+    private static final String DOWNLOADS = "Downloads";
+
 
     private Storage() {
     }
@@ -57,18 +59,73 @@ public final class Storage {
         return folder.getAbsolutePath();
     }
 
-    /** First existing "books" folder in shared storage, otherwise the app folder. */
+    /**
+     * Default library folder: always {@code <shared storage>/Books} (the
+     * canonical place for audiobooks), even when it does not exist yet, so the
+     * empty state can tell the user exactly where to put files. Settings offers
+     * one-tap switches to Music / Downloads / other recent folders.
+     */
     public static String defaultRoot(Context context) {
+        String books = sharedFolder(context, BOOKS);
+        return books != null ? books : appFolder(context);
+    }
+
+    /** Absolute path of a standard shared-storage folder ({@code Music}, ...). */
+    public static String sharedFolder(Context context, String name) {
         File base = Environment.getExternalStorageDirectory();
-        if (base != null) {
-            for (String name : COMMON_FOLDER_NAMES) {
-                File candidate = new File(base, name);
-                if (candidate.isDirectory() && candidate.canRead()) {
-                    return candidate.getAbsolutePath();
+        if (base == null) {
+            return null;
+        }
+        return new File(base, name).getAbsolutePath();
+    }
+
+    public static String musicFolder(Context context) {
+        return sharedFolder(context, MUSIC);
+    }
+
+    /** Root of the removable SD card, or {@code null} when there is none. */
+    public static String removableRoot(Context context) {
+        File[] dirs = context.getExternalFilesDirs(null);
+        if (dirs != null) {
+            for (int i = 1; i < dirs.length; i++) {
+                // /storage/XXXX-XXXX/Android/data/<package>/files -> volume root
+                if (dirs[i] == null) {
+                    continue;
+                }
+                String path = dirs[i].getAbsolutePath();
+                int marker = path.indexOf("/Android/");
+                if (marker > 0) {
+                    return path.substring(0, marker);
                 }
             }
         }
-        return appFolder(context);
+        File storage = new File("/storage");
+        File[] children = storage.listFiles();
+        if (children != null) {
+            for (File child : children) {
+                String name = child.getName();
+                if (!"emulated".equals(name) && !"self".equals(name) && child.isDirectory()) {
+                    return child.getAbsolutePath();
+                }
+            }
+        }
+        return null;
+    }
+
+    /** Creates the folder when possible; returns true when it exists afterwards. */
+    public static boolean ensureFolder(String path) {
+        if (path == null) {
+            return false;
+        }
+        File folder = new File(path);
+        if (folder.isDirectory()) {
+            return true;
+        }
+        try {
+            return folder.mkdirs() || folder.isDirectory();
+        } catch (SecurityException e) {
+            return false;
+        }
     }
 
     public static int accessLevel(Context context) {

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings card with full storage access: the green outline replaces the
+     "access granted" text, so the page stays short. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="@dimen/corner" />
+    <solid android:color="@color/surface" />
+    <stroke
+        android:width="2dp"
+        android:color="@color/ok" />
+</shape>

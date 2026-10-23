@@ -16,6 +16,7 @@ import io.github.yuki2ka.audiobookplayer.model.ScanResult;
 import io.github.yuki2ka.audiobookplayer.playback.PlayQueue;
 import io.github.yuki2ka.audiobookplayer.scan.Scanner;
 import io.github.yuki2ka.audiobookplayer.util.Fingerprint;
+import io.github.yuki2ka.audiobookplayer.util.SeekCurve;
 import io.github.yuki2ka.audiobookplayer.util.NaturalSort;
 import io.github.yuki2ka.audiobookplayer.util.TimeFormat;
 
@@ -31,6 +32,7 @@ public final class LogicTests {
     public static void main(String[] args) throws Exception {
         System.out.println("Running logic tests (locale: " + java.util.Locale.getDefault() + ")");
         testTimeFormat();
+        testSeekCurve();
         testNaturalSortBasics();
         testNaturalSortUnicode();
         testDisplayName();
@@ -115,6 +117,45 @@ public final class LogicTests {
         eq("clock(-5)", "0:00", TimeFormat.clock(-5));
         eq("clamp long", 60L, TimeFormat.clamp(99L, 0L, 60L));
         eq("clamp int", 1, TimeFormat.clamp(-3, 1, 60));
+    }
+
+    private static void testSeekCurve() {
+        // The pad maps "how far from the play button" to 2..60 s.
+        eq("curve min at 0", SeekCurve.MIN_SECONDS, SeekCurve.secondsFor(0f));
+        eq("curve max at 1", SeekCurve.MAX_SECONDS, SeekCurve.secondsFor(1f));
+        eq("curve clamps below 0", SeekCurve.MIN_SECONDS, SeekCurve.secondsFor(-3f));
+        eq("curve clamps above 1", SeekCurve.MAX_SECONDS, SeekCurve.secondsFor(7f));
+
+        // Inner edge stays fine-grained, the middle is a useful jump.
+        int quarter = SeekCurve.secondsFor(0.25f);
+        int half = SeekCurve.secondsFor(0.5f);
+        int threeQuarters = SeekCurve.secondsFor(0.75f);
+        eq("curve at 0.25 is 6 s", 6, quarter);
+        eq("curve at 0.5 is 17 s", 17, half);
+        eq("curve at 0.75 is 35 s", 35, threeQuarters);
+        check("0.1 is a small nudge (" + SeekCurve.secondsFor(0.1f) + " s)",
+                SeekCurve.secondsFor(0.1f) <= 4);
+        check("first fifth is fine", SeekCurve.secondsFor(0.2f) <= 8);
+
+        // Monotonic, never out of range, and always whole seconds.
+        int previous = -1;
+        for (int i = 0; i <= 100; i++) {
+            int value = SeekCurve.secondsFor(i / 100f);
+            check("curve monotonic at " + i, value >= previous);
+            check("curve in range at " + i,
+                    value >= SeekCurve.MIN_SECONDS && value <= SeekCurve.MAX_SECONDS);
+            previous = value;
+        }
+        eq("curve milliseconds", 60000L, SeekCurve.millisecondsFor(1f));
+        // The default 10 s step is reachable with a comfortable touch.
+        boolean reachable = false;
+        for (int i = 0; i <= 100; i++) {
+            if (SeekCurve.secondsFor(i / 100f) == 10) {
+                reachable = true;
+                break;
+            }
+        }
+        check("10 s is reachable on the pad", reachable);
     }
 
     private static void testNaturalSortBasics() {

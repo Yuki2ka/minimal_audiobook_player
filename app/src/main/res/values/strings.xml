@@ -8,10 +8,6 @@
     <string name="tab_settings">Settings</string>
 
     <!-- Player -->
-    <string name="nothing_playing">Nothing playing</string>
-    <string name="nothing_playing_hint">Tap a file to start listening</string>
-    <string name="playing">Playing</string>
-    <string name="paused">Paused</string>
     <string name="prev_file">Previous file</string>
     <string name="next_file">Next file</string>
     <string name="play">Play</string>
@@ -20,11 +16,14 @@
     <string name="seek_forward">Forward %1$d seconds</string>
     <string name="seek_back_label">\u2212 %1$d s</string>
     <string name="seek_forward_label">+ %1$d s</string>
-    <string name="seek_hint_long_press">Long-press for 60 s</string>
+    <string name="seek_back_default">\u2212 10 s</string>
+    <string name="seek_forward_default">+ 10 s</string>
+    <string name="pad_back">Seek back, tap farther from the middle for more than %1$d s</string>
+    <string name="pad_forward">Seek forward, tap farther from the middle for more than %1$d s</string>
+    <string name="pad_seconds">%1$d s</string>
+    <string name="pad_range">2\u201360 s</string>
     <string name="time_remaining">\u2212 %1$s</string>
-    <string name="percent">%1$d %%</string>
     <string name="seek_bar">Playback position</string>
-    <string name="rough_progress">Overall progress</string>
     <string name="resume_at">Resume %1$s</string>
     <string name="current_file">Currently playing</string>
     <string name="prev_short">Prev</string>
@@ -41,6 +40,7 @@
     <string name="empty_library_body">Add audiobooks to\n%1$s\nor choose another folder in Settings.</string>
     <string name="empty_folder">This folder contains no audio files.</string>
     <string name="root_unreadable">Cannot read\n%1$s\nGrant storage access or choose another folder in Settings.</string>
+    <string name="root_missing">Folder not found:\n%1$s\nPick Music, Books, Downloads or another folder in Settings.</string>
     <string name="scan_done">%1$d audio files found</string>
     <string name="audio_file">Audio file</string>
     <string name="folder_label">Folder</string>
@@ -71,10 +71,16 @@
     <string name="settings_root">Audiobook folder</string>
     <string name="settings_root_hint">Only this folder is scanned. Sub-folders are included.</string>
     <string name="choose_folder">Choose folder\u2026</string>
-    <string name="reset_default">Reset</string>
+    <string name="quick_music">Music</string>
+    <string name="quick_books">Books</string>
+    <string name="quick_downloads">Downloads</string>
+    <string name="quick_sd">SD card</string>
+    <string name="folder_unavailable">Cannot open or create\n%1$s</string>
+    <string name="previous_folders">Recent folders \u2014 tap to switch, trash to remove</string>
+    <string name="delete_path">Remove from recent folders</string>
     <string name="settings_seek">Seek step</string>
     <string name="settings_seek_value">%1$d s</string>
-    <string name="settings_seek_hint">Step used by the \u2212 / + buttons. Long-press jumps 60 s.</string>
+    <string name="settings_seek_hint">Step of the \u2212 / + buttons (long-press them for 60 s). The pads beside the play button seek 2\u201360 s depending on how far from the middle you tap.</string>
     <string name="settings_delete_no_confirm">Delete without confirmation</string>
     <string name="settings_delete_no_confirm_hint">The trash button removes files immediately. There is no undo.</string>
     <string name="settings_keep_awake">Keep screen on while playing</string>
@@ -89,13 +95,12 @@
     <string name="settings_library">Library</string>
     <string name="rescan">Rescan folder</string>
     <string name="settings_access">Storage access</string>
-    <string name="access_full">Full access granted</string>
     <string name="access_read_only">Read-only access</string>
     <string name="access_none">No access</string>
-    <string name="access_hint_full">Files can be listed, played and deleted.</string>
-    <string name="access_hint_limited">Files can be played, but deleting may fail. Grant \u201call files access\u201d for full control.</string>
     <string name="access_hint_none">Required to list and play the audiobook folder.</string>
     <string name="grant_access">Grant access</string>
+    <string name="grant_all_files">Open access settings</string>
+    <string name="access_limited_hint">Playback works, but listing and deleting need \u201call files access\u201d.</string>
     <string name="settings_about">About</string>
     <string name="about_text">Minimal Audiobook Player %1$s\nNo ads, no network access, no trackers.</string>
 

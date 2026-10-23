@@ -5,7 +5,7 @@ Next-step pointer lives in [TASKS.md](TASKS.md).
 
 Project: **Minimal Audiobook Player** — a dependency-free Android audiobook player
 (minSdk 24 / Android 7.0, targetSdk 34), package `io.github.yuki2ka.audiobookplayer`,
-version 1.0.0.
+version 1.1.0.
 
 ## Milestones
 
@@ -25,15 +25,17 @@ version 1.0.0.
 | 11 | JVM logic tests (incl. Unicode fixtures) | ✅ |
 | 12 | Test build APK (minSdk 24 verify) + signing | ✅ |
 | 13 | Documentation (README, architecture, build, install) | ✅ |
+| 14 | UI pass: proportional seek pads, icon-only play, compact panel | ✅ |
+| 15 | Settings pass: rescan first, quick folders, recent paths, green access state | ✅ |
 
 ## Verification (last run)
 
 | Check | Result |
 |-------|--------|
-| `tools/run-tests.sh` | **145 assertions, 0 failed** (locale forced to UTF-8) |
-| `tools/check-resources.py` | 67 ids, 9 layouts, 102 strings, 26 drawables — all references resolve |
-| `tools/build-apk.sh` | `artifacts/MinimalAudiobookPlayer-1.0.0.apk`, **172 KB**, 49 entries |
-| Manifest / badging | package correct, versionCode 1, versionName 1.0.0, **sdkVersion 24**, target 34, launcher `MainActivity` |
+| `tools/run-tests.sh` | **358 assertions, 0 failed** (locale forced to UTF-8) |
+| `tools/check-resources.py` | 77 ids, 10 layouts, 107 strings, 28 drawables — all references resolve |
+| `tools/build-apk.sh` | `artifacts/MinimalAudiobookPlayer-1.1.0.apk`, **184 KB**, 52 entries |
+| Manifest / badging | package correct, versionCode 2, versionName 1.1.0, **sdkVersion 24**, target 34, launcher `MainActivity` |
 | DEX | dex 037, 96,788 B; no AndroidX, no Kotlin, no `java.time` / `java.nio.file` / streams / `Optional` references (API 24 safe) |
 | Signature | `apksigner verify`: v2 + v3 true, `CN=Android Debug` (RSA-2048) |
 | Alignment | `zipalign -c -v -p 4`: successful |
@@ -94,6 +96,28 @@ JAVA_HOME=/tmp/toolchain/jdk-17.0.20.1+1 ANDROID_HOME=/tmp/sdk ./tools/build-apk
    pinned only in folder mode. `playFile()` now always rotates the unified queue.
 4. Back from the folder page with no parent went straight out of the app; it now returns
    to the All-files page. Deleting the last played file also clears the remembered path.
+
+## 1.1.0 UI changes (requested after trying 1.0.0)
+
+- **Transport panel rebuilt**: no file name/status line, no extra progress bar,
+  no percentage. It is now times (`played · total · remaining`), the seek bar,
+  the proportional pads around an icon-only play button, and the
+  `prev / −N s / +N s / next` row.
+- **Proportional seek** (`ui/SeekPad` + `util/SeekCurve`): 2–60 s depending on
+  the distance from the middle of the pad, quadratic so the inner half is fine
+  control; the value is shown live and tested (monotonic, clamped, reachable 10 s).
+- **Settings reordered**: rescan first, then the folder card with the access
+  block at its top, quick folders (`Music`, `Books`, `Downloads`, `SD card`),
+  the folder picker and the recent-folder list with delete buttons. The old
+  "Reset" button is gone.
+- **Default folder is `<shared storage>/Books`**, created on first scan when the
+  platform allows it. Switching to a folder that cannot be created now keeps the
+  old library instead of silently pointing at nothing.
+- **Access state is visual**: with full access the notification block is hidden
+  and the card gets a green outline instead of text.
+- Fixed while testing: `SeekPad` used to reset its value before seeking (every
+  tap would have seeked 2 s); switching the root folder no longer stops playback
+  of a file that still exists.
 
 ## Known risks (device-only)
 

@@ -3,6 +3,10 @@ package io.github.yuki2ka.audiobookplayer.data;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 import io.github.yuki2ka.audiobookplayer.util.TimeFormat;
 
 /**
@@ -21,6 +25,10 @@ public final class Prefs {
     private static final String KEY_LAST_MODE = "last_mode";
     private static final String KEY_LAST_FOLDER = "last_folder";
     private static final String KEY_LAST_PAGE = "last_page";
+    private static final String KEY_ROOT_HISTORY = "root_history";
+
+    /** How many previously chosen folders are offered in Settings. */
+    private static final int MAX_HISTORY = 6;
 
     public static final int MODE_UNIFIED = 0;
     public static final int MODE_FOLDER = 1;
@@ -42,6 +50,58 @@ public final class Prefs {
 
     public void setRoot(String path) {
         prefs.edit().putString(KEY_ROOT, path).apply();
+        rememberRoot(path);
+    }
+
+    /**
+     * Previously chosen folders, most recent first. Stored as newline separated
+     * text: paths cannot contain a newline, so no JSON dependency is needed.
+     */
+    public List<String> rootHistory() {
+        String raw = prefs.getString(KEY_ROOT_HISTORY, "");
+        if (raw == null || raw.length() == 0) {
+            return Collections.emptyList();
+        }
+        String[] parts = raw.split("\n");
+        ArrayList<String> result = new ArrayList<>(parts.length);
+        for (String part : parts) {
+            if (part.length() > 0 && !result.contains(part)) {
+                result.add(part);
+            }
+        }
+        return result;
+    }
+
+    /** Moves {@code path} to the front of the history (called by setRoot). */
+    public void rememberRoot(String path) {
+        if (path == null || path.length() == 0) {
+            return;
+        }
+        ArrayList<String> list = new ArrayList<>(rootHistory());
+        list.remove(path);
+        list.add(0, path);
+        while (list.size() > MAX_HISTORY) {
+            list.remove(list.size() - 1);
+        }
+        saveHistory(list);
+    }
+
+    public void forgetRoot(String path) {
+        ArrayList<String> list = new ArrayList<>(rootHistory());
+        if (list.remove(path)) {
+            saveHistory(list);
+        }
+    }
+
+    private void saveHistory(List<String> list) {
+        StringBuilder sb = new StringBuilder(list.size() * 32);
+        for (String item : list) {
+            if (sb.length() > 0) {
+                sb.append('\n');
+            }
+            sb.append(item);
+        }
+        prefs.edit().putString(KEY_ROOT_HISTORY, sb.toString()).apply();
     }
 
     public int seekStep() {

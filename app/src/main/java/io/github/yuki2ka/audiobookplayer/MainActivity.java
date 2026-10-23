@@ -14,8 +14,8 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ListView;
-import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -33,6 +33,7 @@ import io.github.yuki2ka.audiobookplayer.scan.Library;
 import io.github.yuki2ka.audiobookplayer.ui.AudioFileAdapter;
 import io.github.yuki2ka.audiobookplayer.ui.FolderAdapter;
 import io.github.yuki2ka.audiobookplayer.ui.FolderBrowser;
+import io.github.yuki2ka.audiobookplayer.ui.SeekPad;
 import io.github.yuki2ka.audiobookplayer.ui.SwipePager;
 import io.github.yuki2ka.audiobookplayer.util.Fingerprint;
 import io.github.yuki2ka.audiobookplayer.util.Storage;
@@ -83,17 +84,16 @@ public final class MainActivity extends Activity implements
     private TextView folderPath;
     private TextView emptyFolders;
 
-    private TextView playerTitle;
-    private TextView playerSubtitle;
     private TextView timePosition;
+    private TextView timeTotal;
     private TextView timeRemaining;
-    private TextView progressPercent;
-    private ProgressBar rough;
     private SeekBar seekBar;
+    private SeekPad padBack;
+    private SeekPad padForward;
     private Button btnBack;
     private Button btnForward;
     private Button btnPrev;
-    private Button btnPlay;
+    private ImageButton btnPlay;
     private Button btnNext;
 
     private FrameLayout permissionOverlay;
@@ -102,6 +102,10 @@ public final class MainActivity extends Activity implements
     private TextView permissionHint;
 
     private TextView settingsRootPath;
+    private View settingsRootCard;
+    private View settingsAccessBlock;
+    private LinearLayout settingsHistory;
+    private TextView settingsHistoryLabel;
     private TextView settingsSeekValue;
     private TextView settingsAccessStatus;
     private TextView settingsAccessHint;
@@ -128,8 +132,9 @@ public final class MainActivity extends Activity implements
     private boolean bindingSettings;
     private int saveTicks;
     private String positionLabel;
+    private String totalLabel;
     private String remainingLabel;
-    private int lastPercent = -1;
+    private String historySignature;
     private String lastScanRoot;
     private String defaultRoot;
 
@@ -314,13 +319,12 @@ public final class MainActivity extends Activity implements
         folderPath = findViewById(R.id.folder_path);
         emptyFolders = findViewById(R.id.empty_folders);
 
-        playerTitle = findViewById(R.id.player_title);
-        playerSubtitle = findViewById(R.id.player_subtitle);
         timePosition = findViewById(R.id.time_position);
+        timeTotal = findViewById(R.id.time_total);
         timeRemaining = findViewById(R.id.time_remaining);
-        progressPercent = findViewById(R.id.progress_percent);
-        rough = findViewById(R.id.rough);
         seekBar = findViewById(R.id.seek_bar);
+        padBack = findViewById(R.id.pad_back);
+        padForward = findViewById(R.id.pad_forward);
         btnBack = findViewById(R.id.btn_back);
         btnForward = findViewById(R.id.btn_forward);
         btnPrev = findViewById(R.id.btn_prev);
@@ -333,6 +337,10 @@ public final class MainActivity extends Activity implements
         permissionHint = findViewById(R.id.permission_app_folder_hint);
 
         settingsRootPath = findViewById(R.id.settings_root_path);
+        settingsRootCard = findViewById(R.id.settings_root_card);
+        settingsAccessBlock = findViewById(R.id.settings_access_block);
+        settingsHistory = findViewById(R.id.settings_history);
+        settingsHistoryLabel = findViewById(R.id.settings_history_label);
         settingsSeekValue = findViewById(R.id.settings_seek_value);
         settingsAccessStatus = findViewById(R.id.settings_access_status);
         settingsAccessHint = findViewById(R.id.settings_access_hint);
@@ -436,6 +444,18 @@ public final class MainActivity extends Activity implements
                 seekRelative(prefs.seekStep() * 1000L);
             }
         });
+        padBack.setListener(new SeekPad.Listener() {
+            @Override
+            public void onSeek(long deltaMs) {
+                seekRelative(deltaMs);
+            }
+        });
+        padForward.setListener(new SeekPad.Listener() {
+            @Override
+            public void onSeek(long deltaMs) {
+                seekRelative(deltaMs);
+            }
+        });
         btnBack.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
@@ -456,10 +476,6 @@ public final class MainActivity extends Activity implements
             public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
                 if (fromUser) {
                     updateTimeLabels(progress, durationMs);
-                    if (durationMs > 0) {
-                        rough.setProgress((int) Math.min(1000L,
-                                progress * 1000L / durationMs));
-                    }
                 }
             }
 
@@ -530,25 +546,25 @@ public final class MainActivity extends Activity implements
         engine.seekTo(target);
         seekBar.setProgress(target);
         updateTimeLabels(target, durationMs);
-        rough.setProgress((int) Math.min(1000L, target * 1000L / durationMs));
     }
 
+    /** Played time on the left, total in the middle, remaining on the right. */
     private void updateTimeLabels(int position, int duration) {
         String newPosition = TimeFormat.clock(position);
         if (!newPosition.equals(positionLabel)) {
             positionLabel = newPosition;
             timePosition.setText(newPosition);
         }
+        String newTotal = TimeFormat.clock(duration);
+        if (!newTotal.equals(totalLabel)) {
+            totalLabel = newTotal;
+            timeTotal.setText(newTotal);
+        }
         String newRemaining = getString(R.string.time_remaining,
                 TimeFormat.clock(Math.max(0, duration - position)));
         if (!newRemaining.equals(remainingLabel)) {
             remainingLabel = newRemaining;
             timeRemaining.setText(newRemaining);
-        }
-        int percent = duration > 0 ? (int) (position * 100.0d / duration) : 0;
-        if (percent != lastPercent) {
-            lastPercent = percent;
-            progressPercent.setText(getString(R.string.percent, percent));
         }
     }
 
@@ -563,30 +579,15 @@ public final class MainActivity extends Activity implements
                 seekBar.setMax(durationMs);
             }
             seekBar.setProgress(position);
-            rough.setProgress((int) Math.min(1000L, position * 1000L / durationMs));
         }
         updateTimeLabels(position, durationMs);
     }
 
     private void updatePlayPauseButton() {
         boolean playing = engine.isPlaying();
+        // The icon is a state-list drawable: selected shows the pause glyph.
         btnPlay.setSelected(playing);
-        btnPlay.setText(playing ? R.string.pause : R.string.play);
         btnPlay.setContentDescription(getString(playing ? R.string.pause : R.string.play));
-    }
-
-    private void updatePlayerTitle() {
-        if (current == null) {
-            playerTitle.setText(R.string.nothing_playing);
-            playerSubtitle.setText(R.string.nothing_playing_hint);
-        } else {
-            playerTitle.setText(current.name);
-            String prefix = current.parentName == null || current.parentName.length() == 0
-                    ? "" : current.parentName + " \u00B7 ";
-            playerSubtitle.setText(prefix + getString(
-                    engine.isPlaying() ? R.string.playing : R.string.paused));
-        }
-        updatePlayPauseButton();
     }
 
     private void updateControls() {
@@ -596,6 +597,8 @@ public final class MainActivity extends Activity implements
         setControlEnabled(btnBack, preparedTrack);
         setControlEnabled(btnForward, preparedTrack);
         setControlEnabled(seekBar, preparedTrack);
+        setControlEnabled(padBack, preparedTrack);
+        setControlEnabled(padForward, preparedTrack);
         setControlEnabled(btnPlay, hasTrack || hasFiles);
         setControlEnabled(btnPrev, hasTrack || hasFiles);
         setControlEnabled(btnNext, hasTrack || hasFiles);
@@ -671,9 +674,8 @@ public final class MainActivity extends Activity implements
         saveTicks = 0;
         seekBar.setMax(1);
         seekBar.setProgress(0);
-        rough.setProgress(0);
         updateTimeLabels(0, 0);
-        updatePlayerTitle();
+        updatePlayPauseButton();
         updateControls();
         adapter.setPlayingPath(file.path);
         browser.setPlaying(file.path);
@@ -764,7 +766,6 @@ public final class MainActivity extends Activity implements
             // End of the queue: keep the track loaded (Play restarts it).
             updateControls();
             updatePlayPauseButton();
-            updatePlayerTitle();
         }
     }
 
@@ -896,26 +897,29 @@ public final class MainActivity extends Activity implements
 
         if (current != null) {
             AudioFile updated = library.find(current.path);
-            if (updated == null) {
-                current = null;
-                prepared = false;
-                durationMs = 0;
-                engine.stopAndRelease();
-            } else {
+            if (updated != null) {
                 if (current.fingerprint() != null) {
                     updated.setFingerprint(current.fingerprint());
                 }
                 current = updated;
+            } else if (!new File(current.path).exists()) {
+                // The file is gone: stop instead of showing a dead track.
+                current = null;
+                prepared = false;
+                durationMs = 0;
+                engine.stopAndRelease();
             }
+            // Otherwise the file still exists but is outside the scanned folder
+            // (the user switched roots): keep playing it.
         }
         if (current == null && engine.hasTrack()) {
             AudioFile updated = library.find(engine.currentPath());
-            if (updated == null) {
+            if (updated != null) {
+                current = updated;
+            } else if (!new File(engine.currentPath()).exists()) {
                 engine.stopAndRelease();
                 prepared = false;
                 durationMs = 0;
-            } else {
-                current = updated;
             }
         }
         if (current != null) {
@@ -945,7 +949,7 @@ public final class MainActivity extends Activity implements
         } else {
             browser.refresh();
         }
-        updatePlayerTitle();
+        updatePlayPauseButton();
         updateControls();
         updateProgressFromEngine();
         updateEmptyState();
@@ -978,6 +982,9 @@ public final class MainActivity extends Activity implements
             return;
         }
         lastScanRoot = root;
+        if (root.equals(defaultRoot) && !new File(root).isDirectory()) {
+            Storage.ensureFolder(root);
+        }
         hidePermissionOverlay();
         library.scan(root, anchorForScan(), userInitiated);
         updateEmptyState();
@@ -997,8 +1004,11 @@ public final class MainActivity extends Activity implements
         scanSpinner.setVisibility(View.GONE);
         emptyTitle.setText(R.string.empty_library_title);
         String root = currentRoot();
-        if (!hasLibraryAccess() || (library.result() != null && library.result().error != null)) {
+        String error = library.result() == null ? null : library.result().error;
+        if (!hasLibraryAccess() || (error != null && !isMissing(error))) {
             emptyBody.setText(getString(R.string.root_unreadable, root));
+        } else if (isMissing(error)) {
+            emptyBody.setText(getString(R.string.root_missing, root));
         } else if (library.result() != null && library.files().isEmpty()
                 && Storage.accessLevel(this) != Storage.ACCESS_FULL
                 && !Storage.isAppFolder(this, root)) {
@@ -1009,6 +1019,11 @@ public final class MainActivity extends Activity implements
             emptyBody.setText(getString(R.string.empty_library_body, root));
         }
         emptySettings.setVisibility(View.VISIBLE);
+    }
+
+    /** A folder that does not exist (yet) reads differently from "no access". */
+    private static boolean isMissing(String error) {
+        return "missing".equals(error) || "not_a_directory".equals(error);
     }
 
     // ---------------------------------------------------------------- deletion
@@ -1072,11 +1087,10 @@ public final class MainActivity extends Activity implements
             durationMs = 0;
             seekBar.setMax(1);
             seekBar.setProgress(0);
-            rough.setProgress(0);
             updateTimeLabels(0, 0);
             adapter.setPlayingPath(null);
             browser.setPlaying(null);
-            updatePlayerTitle();
+            updatePlayPauseButton();
             updateControls();
         }
         if (file.path.equals(prefs.lastFile())) {
@@ -1151,14 +1165,44 @@ public final class MainActivity extends Activity implements
                 startActivityForResult(intent, RC_PICK_FOLDER);
             }
         });
-        findViewById(R.id.settings_reset_folder).setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.settings_quick_music).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                prefs.setRoot(Storage.defaultRoot(MainActivity.this));
-                refreshSettings();
-                startScan(true);
+                setRootFolder(Storage.musicFolder(MainActivity.this));
             }
         });
+        findViewById(R.id.settings_quick_books).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                setRootFolder(Storage.sharedFolder(MainActivity.this, Storage.BOOKS));
+            }
+        });
+        findViewById(R.id.settings_quick_downloads).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                setRootFolder(Storage.sharedFolder(MainActivity.this, "Downloads"));
+            }
+        });
+        // The SD card button only makes sense when a removable volume is mounted.
+        View sdButton = findViewById(R.id.settings_quick_sd);
+        View sdSpace = findViewById(R.id.settings_sd_space);
+        View downloadsButton = findViewById(R.id.settings_quick_downloads);
+        final String sdRoot = Storage.removableRoot(this);
+        if (sdRoot == null) {
+            // No card inserted: let Downloads use the full row instead of
+            // leaving a hole where the SD button would be.
+            sdButton.setVisibility(View.GONE);
+            sdSpace.setVisibility(View.GONE);
+            ((LinearLayout.LayoutParams) downloadsButton.getLayoutParams()).weight = 2f;
+            downloadsButton.requestLayout();
+        } else {
+            sdButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    setRootFolder(sdRoot);
+                }
+            });
+        }
         settingsGrant.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1193,23 +1237,27 @@ public final class MainActivity extends Activity implements
         settingsSeekValue.setText(getString(R.string.settings_seek_value, step));
         settingsDeleteSwitch.setChecked(prefs.deleteWithoutConfirm());
         settingsKeepAwakeSwitch.setChecked(prefs.keepScreenOn());
+        // With full access the whole notification block disappears and the card
+        // gets a green outline instead: less text, one glance is enough.
         int access = Storage.accessLevel(this);
-        if (access == Storage.ACCESS_FULL) {
-            settingsAccessStatus.setText(R.string.access_full);
-            settingsAccessStatus.setTextColor(getColor(R.color.ok));
-            settingsAccessHint.setText(R.string.access_hint_full);
-            settingsGrant.setVisibility(View.GONE);
-        } else if (access == Storage.ACCESS_READ) {
-            settingsAccessStatus.setText(R.string.access_read_only);
-            settingsAccessStatus.setTextColor(getColor(R.color.accent));
-            settingsAccessHint.setText(R.string.access_hint_limited);
-            settingsGrant.setVisibility(View.VISIBLE);
-        } else {
-            settingsAccessStatus.setText(R.string.access_none);
-            settingsAccessStatus.setTextColor(getColor(R.color.danger));
-            settingsAccessHint.setText(R.string.access_hint_none);
+        boolean full = access == Storage.ACCESS_FULL;
+        settingsAccessBlock.setVisibility(full ? View.GONE : View.VISIBLE);
+        settingsRootCard.setBackgroundResource(full ? R.drawable.bg_card_ok : R.drawable.bg_card);
+        if (!full) {
+            if (access == Storage.ACCESS_READ) {
+                settingsAccessStatus.setText(R.string.access_read_only);
+                settingsAccessStatus.setTextColor(getColor(R.color.accent));
+                settingsAccessHint.setText(R.string.access_limited_hint);
+            } else {
+                settingsAccessStatus.setText(R.string.access_none);
+                settingsAccessStatus.setTextColor(getColor(R.color.danger));
+                settingsAccessHint.setText(R.string.access_hint_none);
+            }
+            settingsGrant.setText(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                    ? R.string.grant_all_files : R.string.grant_access);
             settingsGrant.setVisibility(View.VISIBLE);
         }
+        rebuildHistory();
         if (library.result() == null) {
             settingsLibraryInfo.setText(R.string.files_count_unknown);
         } else if (library.isScanning()) {
@@ -1237,6 +1285,74 @@ public final class MainActivity extends Activity implements
         } else {
             Storage.requestReadAccess(this, RC_PERMISSION);
         }
+    }
+
+    /**
+     * Switches the library folder: remembers it (Settings shows the recent
+     * paths), recreates standard folders when they are missing, and rescans.
+     */
+    private void setRootFolder(String path) {
+        if (path == null || path.length() == 0) {
+            return;
+        }
+        if (!new File(path).isDirectory() && !Storage.ensureFolder(path)) {
+            // Android 11+ without "all files access" cannot create shared
+            // folders; keep the current library instead of pointing at nothing.
+            Toast.makeText(this, getString(R.string.folder_unavailable, path),
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        prefs.setRoot(path);
+        historySignature = null;
+        refreshSettings();
+        startScan(true);
+    }
+
+    /** Recent folders in Settings: tap to switch, trash to forget. */
+    private void rebuildHistory() {
+        if (settingsHistory == null) {
+            return;
+        }
+        List<String> all = prefs.rootHistory();
+        String root = currentRoot();
+        StringBuilder signature = new StringBuilder();
+        for (String path : all) {
+            if (!path.equals(root)) {
+                signature.append(path).append('\n');
+            }
+        }
+        String signatureText = signature.toString();
+        if (signatureText.equals(historySignature)) {
+            return;
+        }
+        historySignature = signatureText;
+        settingsHistory.removeAllViews();
+        int shown = 0;
+        for (final String path : all) {
+            if (path.equals(root)) {
+                continue;
+            }
+            View row = getLayoutInflater().inflate(R.layout.item_path, settingsHistory, false);
+            ((TextView) row.findViewById(R.id.path_text)).setText(path);
+            View.OnClickListener choose = new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    setRootFolder(path);
+                }
+            };
+            row.setOnClickListener(choose);
+            row.findViewById(R.id.path_delete).setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    prefs.forgetRoot(path);
+                    historySignature = null;
+                    rebuildHistory();
+                }
+            });
+            settingsHistory.addView(row);
+            shown++;
+        }
+        settingsHistoryLabel.setVisibility(shown > 0 ? View.VISIBLE : View.GONE);
     }
 
     private void confirmClearPositions() {
@@ -1281,10 +1397,8 @@ public final class MainActivity extends Activity implements
         findViewById(R.id.permission_app_folder).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                prefs.setRoot(Storage.appFolder(MainActivity.this));
+                setRootFolder(Storage.appFolder(MainActivity.this));
                 hidePermissionOverlay();
-                refreshSettings();
-                startScan(true);
                 Toast.makeText(MainActivity.this, R.string.app_folder_used,
                         Toast.LENGTH_LONG).show();
             }
@@ -1316,9 +1430,7 @@ public final class MainActivity extends Activity implements
         if (requestCode == RC_PICK_FOLDER && resultCode == RESULT_OK && data != null) {
             String path = data.getStringExtra(FolderPickerActivity.EXTRA_RESULT);
             if (path != null && path.length() > 0) {
-                prefs.setRoot(path);
-                refreshSettings();
-                startScan(true);
+                setRootFolder(path);
             }
         }
         if (requestCode == RC_ALL_FILES && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
@@ -1365,14 +1477,13 @@ public final class MainActivity extends Activity implements
         }
         updateProgressFromEngine();
         updateControls();
-        updatePlayerTitle();
+        updatePlayPauseButton();
         startTickerIfPlaying();
     }
 
     @Override
     public void onPlayStateChanged(boolean playing) {
         updatePlayPauseButton();
-        updatePlayerTitle();
         applyKeepAwake();
         if (playing) {
             handler.removeCallbacks(ticker);
@@ -1393,6 +1504,7 @@ public final class MainActivity extends Activity implements
         handler.removeCallbacks(ticker);
         prepared = false;
         updateControls();
+        updatePlayPauseButton();
         String name = current != null ? current.name : "";
         Toast.makeText(this, getString(R.string.cannot_play) + (name.length() > 0 ? ": " + name : ""),
                 Toast.LENGTH_LONG).show();

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One entry of the "recent folders" list in Settings: tap to switch to that
+     folder, the trash button removes it from the list. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/path_row"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?android:attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:minHeight="48dp"
+    android:orientation="horizontal">
+
+    <TextView
+        android:id="@+id/path_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ellipsize="middle"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:singleLine="true"
+        android:textColor="@color/accent"
+        android:textSize="12sp" />
+
+    <ImageButton
+        android:id="@+id/path_delete"
+        android:layout_width="@dimen/touch"
+        android:layout_height="@dimen/touch"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/delete_path"
+        android:padding="14dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_trash"
+        android:tint="@color/danger" />
+</LinearLayout>

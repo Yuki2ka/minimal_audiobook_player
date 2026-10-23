@@ -25,8 +25,10 @@ so it can be installed next to nothing else and Android may warn about the
 certificate — that is expected for a test build. It is zipaligned and signed
 with the v2 + v3 schemes.
 
-On first launch the app asks for storage access. If you decline, it offers its
-own app-specific folder, which needs no permission at all.
+On first launch the app asks for storage access. The default library is
+`/storage/emulated/0/Books` (created automatically once access is granted);
+Music, Downloads and the SD card root are one tap away in settings. If you
+decline, the app offers its own app-specific folder, which needs no permission.
 
 ## What it does
 
@@ -34,19 +36,27 @@ own app-specific folder, which needs no permission at all.
 |--------|-----------|
 | **All files** (tab 1) | One flat list of every audio file under the root folder, sorted naturally *ignoring folders*. The file that is playing is pinned to the top: when a file finishes it moves to the bottom and the next one rises to the top. |
 | **Folders** (tab 2) | Folder explorer with sub-folders, per-folder file counts, breadcrumb path, and an up button. Each folder reopens at the last file you played in it. |
-| **Settings** (tab 3) | Root folder (with a built-in picker and a reset), seek step 1–60 s, "delete without confirmation", keep screen on, storage-access status, clear all saved positions, rescan, library file count. |
+| **Settings** (tab 3) | Rescan first, then the folder card: storage access (only while it is missing), one-tap **Music / Books / Downloads / SD card** folders, the built-in folder picker and the recent-folder list (tap to switch, trash to forget); then seek step 1–60 s, "delete without confirmation", keep screen on, clear all saved positions, about. |
 
 Swipe left/right to change pages; the tab bar does the same. Back goes
 settings → all files, and folders → parent folder → all files.
 
 ### Playback panel (fixed at the bottom)
 
-* Title + folder/state line.
-* Thin **rough progress bar** for an at-a-glance position.
-* Precise **seek bar** — tap anywhere on it to jump.
-* Position, percentage and remaining time.
-* **−N s / +N s** buttons (N is the configured step; long-press jumps 60 s).
-* **Previous file · Play/Pause · Next file**, each an equally wide 68 dp button.
+```
+2:00            10:00            -8:00      played · total · remaining
+───●──────────────────────────────          seek bar, tap to jump
+[ 2–60 s ▶]        ( ▶ )        [◀ 2–60 s]  proportional seek pads · play
+[prev]  [- 10 s]  [+ 10 s]  [next]
+```
+
+* **Proportional seek pads** — tap (or drag) near the middle of the pad for a
+  2 s nudge, farther out for up to 60 s. The pad shows the amount live and
+  resets to "2–60 s" when released.
+* **Play/Pause** is icon-only and centred between the two pads.
+* **−N s / +N s** use the step from settings (long-press them for a full minute).
+* The file name is deliberately not repeated here: the playing file is pinned to
+  the top of the All-files list.
 
 Every row of both lists is at least 64 dp tall and the delete button is its own
 48×48 dp target on the right, so tapping a row to play almost never deletes it.
@@ -138,6 +148,8 @@ docs/ARCHITECTURE.md           internals and design rationale
   last 64 KiB), so recognising a 500 MB audiobook costs no more than a small image.
 * Positions live in SQLite keyed by that fingerprint and are deleted when a file
   finishes, so the table does not grow forever.
+* Storage access is one line of state: with full access the whole "storage
+  access" block disappears and the folder card is outlined in green.
 * Scans only touch the chosen folder, run on one low-priority daemon thread, and
   store nothing but names, sizes and timestamps.
 

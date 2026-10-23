@@ -44,6 +44,7 @@ mkdir -p "$OUT"
 
 "$JAVAC" -encoding UTF-8 -source 8 -target 8 -Xlint:-options -d "$OUT" \
     "$SRC/util/TimeFormat.java" \
+    "$SRC/util/SeekCurve.java" \
     "$SRC/util/NaturalSort.java" \
     "$SRC/util/Fingerprint.java" \
     "$SRC/model/AudioFile.java" \

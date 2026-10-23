@@ -41,12 +41,22 @@ activity_main.xml
     page_all          ListView + empty/scan state
     page_folders      breadcrumb bar + ListView + empty state
     page_settings     ScrollView with cards
-  player_panel        fixed, outside the pager: always reachable
+  player_panel        fixed, outside the pager: times, seek bar,
+                      proportional pads + icon-only play, transport row
   permission_card     full-screen scrim, shown only while access is missing
 ```
 
 The landscape variant (`layout-land/activity_main.xml`) keeps the same ids, so
 no Java code changes; it just gives the list more of the screen.
+
+`ui/SeekPad` is a code-built `FrameLayout` (arrow + live value, ripple
+background) used twice beside the play button. It maps the touch x to a
+0..1 fraction measured from its inner edge and asks `util/SeekCurve` for the
+seek amount, so the curve stays Android-free and unit-tested:
+
+| fraction | 0.0 | 0.1 | 0.25 | 0.5 | 0.75 | 1.0 |
+|----------|-----|-----|------|-----|------|-----|
+| seconds  | 2   | 3   | 6    | 17  | 35   | 60  |
 
 `FolderPickerActivity` is a second, tiny activity: a directory list, a path
 field, up/use/cancel. It returns an absolute path in an intent extra and uses no
@@ -78,7 +88,9 @@ folder_state(folder TEXT PRIMARY KEY, last_path TEXT NOT NULL, scroll INTEGER)
 ### SharedPreferences (`Prefs`)
 
 `root_path`, `seek_step_seconds` (1–60, default 10), `delete_without_confirm`,
-`keep_screen_on`, `last_file`, `last_mode`, `last_folder`, `last_page`.
+`keep_screen_on`, `last_file`, `last_mode`, `last_folder`, `last_page`,
+`root_history` (newline-separated, newest first, capped at 6 — shown as the
+recent-folder list in Settings; newline is safe because paths cannot contain one).
 
 ### Fingerprint (`util/Fingerprint`)
 
@@ -169,6 +181,7 @@ produces a `ScanResult` that is applied on the main thread.
 `tools/tests/LogicTests.java` is a plain `main()` runner (no JUnit) covering:
 
 * `TimeFormat.clock/clamp`,
+* `SeekCurve` (clamping, monotonic, quadratic spread, 10 s reachable),
 * `NaturalSort` numeric/case/accent ordering, Cyrillic, Greek, Japanese, Korean,
   Hebrew, emoji, total-order and NFC idempotence,
 * `AudioFile.displayName`,
