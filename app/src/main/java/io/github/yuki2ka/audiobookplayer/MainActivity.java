@@ -131,6 +131,7 @@ public final class MainActivity extends Activity implements
     private String remainingLabel;
     private int lastPercent = -1;
     private String lastScanRoot;
+    private String defaultRoot;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable ticker = new Runnable() {
@@ -156,6 +157,9 @@ public final class MainActivity extends Activity implements
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = new Prefs(this);
+        // Resolved once per activity: defaultRoot() stats shared folders and is
+        // called from several UI paths.
+        defaultRoot = Storage.defaultRoot(this);
         db = App.get().db();
         library = App.get().library();
         engine = App.get().player();
@@ -954,7 +958,7 @@ public final class MainActivity extends Activity implements
     }
 
     private String currentRoot() {
-        return prefs.root(Storage.defaultRoot(this));
+        return prefs.root(defaultRoot);
     }
 
     private String anchorForScan() {
