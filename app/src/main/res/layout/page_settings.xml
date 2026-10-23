@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Inline settings page (third swipeable page). Plain framework widgets keep
+     this cheap and avoid a PreferenceFragment dependency. -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/page_settings"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:clipToPadding="false"
+    android:fillViewport="true"
+    android:padding="@dimen/screen_pad"
+    android:visibility="gone">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="2dp"
+        android:paddingBottom="12dp">
+
+        <!-- Root folder -->
+        <LinearLayout style="@style/SettingCard">
+
+            <TextView
+                style="@style/SettingTitle"
+                android:text="@string/settings_root" />
+
+            <TextView
+                style="@style/SettingSummary"
+                android:text="@string/settings_root_hint" />
+
+            <TextView
+                android:id="@+id/settings_root_path"
+                style="@style/SettingValue"
+                android:text="…" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/settings_choose_folder"
+                    style="@style/SettingActionButton"
+                    android:layout_width="0dp"
+                    android:layout_weight="2"
+                    android:layout_marginTop="0dp"
+                    android:text="@string/choose_folder" />
+
+                <Space
+                    android:layout_width="@dimen/gap"
+                    android:layout_height="1dp" />
+
+                <Button
+                    android:id="@+id/settings_reset_folder"
+                    style="@style/SettingActionButton"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_marginTop="0dp"
+                    android:text="@string/reset_default" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Seek step -->
+        <LinearLayout style="@style/SettingCard">
+
+            <TextView
+                style="@style/SettingTitle"
+                android:text="@string/settings_seek" />
+
+            <TextView
+                android:id="@+id/settings_seek_value"
+                style="@style/SettingValue"
+                android:textSize="20sp" />
+
+            <SeekBar
+                android:id="@+id/settings_seek_bar"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/seek_height"
+                android:layout_marginTop="6dp"
+                android:max="59"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:progressDrawable="@drawable/seek_progress"
+                android:splitTrack="false"
+                android:thumb="@drawable/seek_thumb" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/PlayerTime"
+                    android:text="1 s" />
+
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    style="@style/PlayerTime"
+                    android:text="60 s" />
+            </LinearLayout>
+
+            <TextView
+                style="@style/SettingSummary"
+                android:layout_marginTop="6dp"
+                android:text="@string/settings_seek_hint" />
+        </LinearLayout>
+
+        <!-- Toggles -->
+        <LinearLayout style="@style/SettingCard">
+
+            <LinearLayout
+                android:id="@+id/settings_delete_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="56dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingTop="8dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="8dp">
+
+                    <TextView
+                        style="@style/SettingTitle"
+                        android:text="@string/settings_delete_no_confirm" />
+
+                    <TextView
+                        style="@style/SettingSummary"
+                        android:text="@string/settings_delete_no_confirm_hint" />
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/settings_delete_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:showText="false" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="6dp"
+                android:background="@color/divider" />
+
+            <LinearLayout
+                android:id="@+id/settings_keep_awake_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minHeight="56dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingTop="8dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="8dp">
+
+                    <TextView
+                        style="@style/SettingTitle"
+                        android:text="@string/settings_keep_awake" />
+
+                    <TextView
+                        style="@style/SettingSummary"
+                        android:text="@string/settings_keep_awake_hint" />
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/settings_keep_awake_switch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:showText="false" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Storage access -->
+        <LinearLayout style="@style/SettingCard">
+
+            <TextView
+                style="@style/SettingTitle"
+                android:text="@string/settings_access" />
+
+            <TextView
+                android:id="@+id/settings_access_status"
+                style="@style/SettingValue" />
+
+            <TextView
+                android:id="@+id/settings_access_hint"
+                style="@style/SettingSummary" />
+
+            <Button
+                android:id="@+id/settings_grant"
+                style="@style/SettingActionButton"
+                android:text="@string/grant_access" />
+        </LinearLayout>
+
+        <!-- Playback positions -->
+        <LinearLayout style="@style/SettingCard">
+
+            <TextView
+                style="@style/SettingTitle"
+                android:text="@string/settings_positions" />
+
+            <TextView
+                style="@style/SettingSummary"
+                android:text="@string/settings_positions_hint" />
+
+            <Button
+                android:id="@+id/settings_clear_positions"
+                style="@style/SettingActionButton"
+                android:text="@string/clear_positions" />
+        </LinearLayout>
+
+        <!-- Library -->
+        <LinearLayout style="@style/SettingCard">
+
+            <TextView
+                style="@style/SettingTitle"
+                android:text="@string/settings_library" />
+
+            <TextView
+                android:id="@+id/settings_library_info"
+                style="@style/SettingSummary" />
+
+            <Button
+                android:id="@+id/settings_rescan"
+                style="@style/SettingActionButton"
+                android:text="@string/rescan" />
+        </LinearLayout>
+
+        <!-- About -->
+        <LinearLayout style="@style/SettingCard">
+
+            <TextView
+                style="@style/SettingTitle"
+                android:text="@string/settings_about" />
+
+            <TextView
+                android:id="@+id/settings_about_text"
+                style="@style/SettingSummary"
+                android:text="@string/app_name" />
+
+            <TextView
+                android:id="@+id/settings_version"
+                style="@style/SettingSummary" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

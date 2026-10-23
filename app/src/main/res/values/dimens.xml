@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="screen_pad">12dp</dimen>
+    <dimen name="gap">10dp</dimen>
+    <dimen name="gap_small">6dp</dimen>
+    <dimen name="corner">14dp</dimen>
+    <dimen name="corner_small">9dp</dimen>
+
+    <!-- Touch targets. Everything interactive is at least 48dp tall,
+         primary controls are 56-72dp. -->
+    <dimen name="touch">48dp</dimen>
+    <dimen name="row_min_height">64dp</dimen>
+    <dimen name="tab_height">54dp</dimen>
+    <dimen name="step_height">52dp</dimen>
+    <dimen name="transport_height">68dp</dimen>
+    <dimen name="seek_height">48dp</dimen>
+    <dimen name="button_min_width">120dp</dimen>
+</resources>

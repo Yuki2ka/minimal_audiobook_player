@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<io.github.yuki2ka.audiobookplayer.ui.SwipePager
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/pages"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- ============ 1. All files (rotating unified list) ============ -->
+    <FrameLayout
+        android:id="@+id/page_all"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <ListView
+            android:id="@+id/list_all"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:cacheColorHint="@android:color/transparent"
+            android:clipToPadding="false"
+            android:divider="@null"
+            android:dividerHeight="0dp"
+            android:fastScrollEnabled="true"
+            android:listSelector="@color/transparent"
+            android:overScrollMode="ifContentScrolls"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:scrollbarStyle="insideInset" />
+
+        <LinearLayout
+            android:id="@+id/empty_all"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="28dp"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:id="@+id/scan_spinner"
+                style="?android:attr/progressBarStyle"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginBottom="14dp"
+                android:indeterminateTint="@color/accent"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/empty_title"
+                style="@style/EmptyTitle"
+                android:text="@string/empty_library_title" />
+
+            <TextView
+                android:id="@+id/empty_body"
+                style="@style/EmptyBody"
+                android:text="@string/empty_library_body" />
+
+            <Button
+                android:id="@+id/empty_settings"
+                style="@style/ActionButton"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/step_height"
+                android:layout_marginTop="18dp"
+                android:paddingStart="22dp"
+                android:paddingEnd="22dp"
+                android:text="@string/tab_settings"
+                android:visibility="gone" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ============ 2. Folder explorer ============ -->
+    <LinearLayout
+        android:id="@+id/page_folders"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/touch"
+            android:background="@color/surface"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="4dp"
+            android:paddingEnd="12dp">
+
+            <ImageButton
+                android:id="@+id/folder_up"
+                android:layout_width="@dimen/touch"
+                android:layout_height="@dimen/touch"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/parent_folder"
+                android:padding="12dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_arrow_up"
+                android:tint="@color/text_primary" />
+
+            <TextView
+                android:id="@+id/folder_path"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_weight="1"
+                android:ellipsize="start"
+                android:singleLine="true"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/divider" />
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <ListView
+                android:id="@+id/list_folders"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:cacheColorHint="@android:color/transparent"
+                android:clipToPadding="false"
+                android:divider="@null"
+                android:dividerHeight="0dp"
+                android:listSelector="@color/transparent"
+                android:overScrollMode="ifContentScrolls"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:scrollbarStyle="insideInset" />
+
+            <TextView
+                android:id="@+id/empty_folders"
+                style="@style/EmptyBody"
+                android:layout_gravity="center"
+                android:padding="28dp"
+                android:text="@string/empty_folder"
+                android:visibility="gone" />
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- ============ 3. Settings ============ -->
+    <include layout="@layout/page_settings" />
+</io.github.yuki2ka.audiobookplayer.ui.SwipePager>

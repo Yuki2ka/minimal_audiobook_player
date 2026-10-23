@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tabs"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/tab_height"
+    android:background="@color/surface"
+    android:orientation="horizontal">
+
+    <TextView
+        android:id="@+id/tab_all"
+        style="@style/TabText"
+        android:text="@string/tab_all" />
+
+    <TextView
+        android:id="@+id/tab_folders"
+        style="@style/TabText"
+        android:text="@string/tab_folders" />
+
+    <TextView
+        android:id="@+id/tab_settings"
+        style="@style/TabText"
+        android:text="@string/tab_settings" />
+</LinearLayout>

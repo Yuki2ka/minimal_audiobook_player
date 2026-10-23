@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark, low-glare palette: audiobooks are usually consumed in the evening. -->
+    <color name="bg">#0E1216</color>
+    <color name="surface">#161C22</color>
+    <color name="surface_2">#1E262E</color>
+    <color name="surface_3">#27313A</color>
+    <color name="divider">#263039</color>
+    <color name="track">#2C3742</color>
+
+    <color name="text_primary">#ECF1F5</color>
+    <color name="text_secondary">#96A4B0</color>
+    <color name="text_disabled">#5A6670</color>
+
+    <color name="accent">#4DA3FF</color>
+    <color name="accent_dim">#1E5C96</color>
+    <color name="accent_ink">#07131F</color>
+    <color name="danger">#FF6B6B</color>
+    <color name="ok">#5ED69B</color>
+
+    <color name="ripple">#2EFFFFFF</color>
+    <color name="scrim">#E6000000</color>
+    <color name="transparent">#00000000</color>
+
+    <color name="ic_launcher_background">#0E1216</color>
+</resources>

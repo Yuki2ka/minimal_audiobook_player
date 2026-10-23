@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'io.github.yuki2ka.audiobookplayer'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "io.github.yuki2ka.audiobookplayer"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    buildTypes {
+        debug {
+            // Plain, unminified build: easiest to inspect and identical to the
+            // toolchain build produced by tools/build-apk.sh.
+            minifyEnabled false
+        }
+        release {
+            minifyEnabled false
+            shrinkResources false
+            // No dependencies and no reflection, so no extra keep rules are needed.
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    buildFeatures {
+        buildConfig false
+    }
+
+    lint {
+        // Nothing exotic here; fail the build on real errors but keep the report.
+        abortOnError true
+        checkReleaseBuilds false
+    }
+}
+
+// Intentionally empty: every class used by this app is either from the Android
+// framework or from java.*. This is what keeps the APK and the runtime footprint
+// small (no AndroidX, no Kotlin runtime, no image loading library).
+dependencies {
+}
