@@ -195,9 +195,30 @@ to `position()`, `duration()` and `seekTo()`.
   auto-repeat); `onTimeout()` after `RELEASE_TIMEOUT_MS` (2.5 s) → `VOLUME` (ROMs
   that swallow the release). Seeking goes through
   `SeekCurve.steppedPosition()` with `Prefs.seekStep()`; volume goes through
-  `AudioManager.adjustStreamVolume(STREAM_MUSIC, …, FLAG_SHOW_UI)`.
+  `AudioManager.adjustStreamVolume(STREAM_MUSIC, …, FLAG_SHOW_UI)`, twice per
+  event so a held key ramps the volume at double the stock rate.
 * Every seek republishes the session's `PlaybackState` position so the system's
   copy stays honest.
+
+## Seek band (`ui/SeekZone`)
+
+`player_panel.xml` puts the three time labels and the `SeekBar` inside a
+`SeekZone` (a `LinearLayout`). The bar alone is a 44 dp target; the labels above
+it used to be dead space. The zone maps any touch that misses the bar to the same
+`x` on the bar's track, using the bar's own `paddingStart`/`paddingEnd` as
+insets, so tapping above a point seeks exactly where tapping the bar would.
+`SeekCurve.fractionForX()`/`progressForX()` do the maths and are unit-tested.
+
+Touch routing:
+
+| Gesture | Owner |
+|---------|-------|
+| Press starts on the bar (including the thumb) | `SeekBar` — native drag, latched for the whole gesture |
+| Press starts on a time label | `SeekZone` — tap seeks on release, horizontal drag scrubs |
+| Vertical drag from a label | enclosing `ScrollView` (landscape panel), the zone stops at the slop threshold |
+
+The row is followed by a 15 dp gap (`@dimen/seek_gap`, 1.5× the normal 10 dp) so
+an overshooting thumb lands on nothing instead of the seek pads.
 
 ## Threading summary
 
@@ -215,7 +236,8 @@ produces a `ScanResult` that is applied on the main thread.
 `tools/tests/LogicTests.java` is a plain `main()` runner (no JUnit) covering:
 
 * `TimeFormat.clock/clamp`,
-* `SeekCurve` (clamping, monotonic, quadratic spread, 10 s reachable),
+* `SeekCurve` (clamping, monotonic, quadratic spread, 10 s reachable, and the
+  row→slider mapping `fractionForX`/`progressForX` used by `SeekZone`),
 * `VolumeGesture` (tap → seek, repeat/long release/timeout → volume, stray and
   late releases, threshold boundary, reset),
 * `NaturalSort` numeric/case/accent ordering, Cyrillic, Greek, Japanese, Korean,

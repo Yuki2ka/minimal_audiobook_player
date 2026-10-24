@@ -80,12 +80,19 @@ public final class VolumeKeySeeker {
 
     private final VolumeGesture gesture = new VolumeGesture();
 
+    /**
+     * Steps applied per held-key event. The platform's single step feels slow at
+     * the key-repeat rate, so a hold moves the volume twice as fast while a tap
+     * (or a stock key when the session is off) keeps the normal single step.
+     */
+    private static final int HOLD_VOLUME_STEPS = 2;
+
     private final Runnable releaseTimeout = new Runnable() {
         @Override
         public void run() {
             // No release event arrived: keep the key useful as a volume step.
             if (gesture.onTimeout() == VolumeGesture.VOLUME) {
-                adjustStream(gesture.direction());
+                adjustStream(gesture.direction(), HOLD_VOLUME_STEPS);
             }
         }
     };
@@ -234,8 +241,9 @@ public final class VolumeKeySeeker {
             return;
         }
         if (direction != 0 && (screenOn || !prefs.volumeKeysSeek())) {
-            // Session is on its way out: keep the key useful meanwhile.
-            adjustStream(direction);
+            // Session is on its way out: keep the key useful meanwhile, with the
+            // stock single step.
+            adjustStream(direction, 1);
             return;
         }
         int action = gesture.onAdjust(direction, SystemClock.uptimeMillis());
@@ -246,7 +254,8 @@ public final class VolumeKeySeeker {
         if (action == VolumeGesture.SEEK) {
             seek(gesture.direction());
         } else if (action == VolumeGesture.VOLUME) {
-            adjustStream(gesture.direction());
+            // Held key: two steps per event, twice as fast as the stock rocker.
+            adjustStream(gesture.direction(), HOLD_VOLUME_STEPS);
         }
     }
 
@@ -258,7 +267,7 @@ public final class VolumeKeySeeker {
     private void seek(int direction) {
         int duration = target.duration();
         if (duration <= 0) {
-            adjustStream(direction);
+            adjustStream(direction, 1);
             return;
         }
         int next = SeekCurve.steppedPosition(
@@ -267,13 +276,17 @@ public final class VolumeKeySeeker {
         publishState();
     }
 
-    private void adjustStream(int direction) {
-        try {
-            audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC,
-                    direction >= 0 ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER,
-                    AudioManager.FLAG_SHOW_UI);
-        } catch (RuntimeException ignored) {
-            // Ignore ROMs that refuse the call.
+    /** Moves the music stream by {@code steps} notches in {@code direction}. */
+    private void adjustStream(int direction, int steps) {
+        int adjust = direction >= 0 ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER;
+        int count = Math.max(1, steps);
+        for (int i = 0; i < count; i++) {
+            try {
+                audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, adjust,
+                        AudioManager.FLAG_SHOW_UI);
+            } catch (RuntimeException ignored) {
+                // Ignore ROMs that refuse the call.
+            }
         }
     }
 

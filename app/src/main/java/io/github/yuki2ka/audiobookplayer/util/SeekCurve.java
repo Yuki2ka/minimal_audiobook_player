@@ -36,6 +36,37 @@ public final class SeekCurve {
         return value < 0f ? 0f : (value > 1f ? 1f : value);
     }
 
+    /**
+     * Position of a touch inside the whole seek row (the time labels above the
+     * slider and the slider itself) as 0..1.
+     *
+     * <p>The slider keeps its track inset from the edges so the thumb is never
+     * clipped; a tap anywhere in the row has to use the same usable width, or
+     * tapping above a given point would seek somewhere else than tapping the
+     * bar below it.</p>
+     *
+     * @param x          touch position in pixels, relative to the row
+     * @param width      row width in pixels
+     * @param insetStart left track inset in pixels
+     * @param insetEnd   right track inset in pixels
+     */
+    public static float fractionForX(float x, float width, float insetStart, float insetEnd) {
+        float usable = width - insetStart - insetEnd;
+        if (usable <= 0f) {
+            return 0f;
+        }
+        float value = (x - insetStart) / usable;
+        return value < 0f ? 0f : (value > 1f ? 1f : value);
+    }
+
+    /** Progress for a tapped row, given the slider's maximum. */
+    public static int progressForX(float x, float width, float insetStart, float insetEnd, int max) {
+        if (max <= 0) {
+            return 0;
+        }
+        return Math.round(fractionForX(x, width, insetStart, insetEnd) * max);
+    }
+
     /** {@code fraction} is clamped to 0..1; the result is 2..60 seconds. */
     public static int secondsFor(float fraction) {
         float clamped = fraction < 0f ? 0f : (fraction > 1f ? 1f : fraction);

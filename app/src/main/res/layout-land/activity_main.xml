@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Landscape: list on the left, player panel on the right (scrollable so it
-     still fits on short landscape screens). -->
+<!-- Landscape: pages on the left, controls on the right.
+     The three tab headers live in the right column, directly above the player
+     panel, so they sit next to the controls they belong to instead of taking a
+     strip off the list. The list gets the full height of the left column. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -17,13 +19,6 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical">
-
-            <include layout="@layout/tabs_bar" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/divider" />
 
             <FrameLayout
                 android:layout_width="match_parent"
@@ -42,19 +37,33 @@
             android:layout_height="match_parent"
             android:background="@color/divider" />
 
-        <ScrollView
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:background="@color/bg"
-            android:fillViewport="true"
-            android:padding="@dimen/gap">
+            android:orientation="vertical">
 
-            <include
-                layout="@layout/player_panel"
+            <include layout="@layout/tabs_bar" />
+
+            <View
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content" />
-        </ScrollView>
+                android:layout_height="1dp"
+                android:background="@color/divider" />
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:fillViewport="true"
+                android:padding="@dimen/gap">
+
+                <include
+                    layout="@layout/player_panel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </ScrollView>
+        </LinearLayout>
     </LinearLayout>
 
     <include layout="@layout/permission_card" />

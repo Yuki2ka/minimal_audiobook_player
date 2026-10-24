@@ -3,6 +3,9 @@
     <dimen name="screen_pad">12dp</dimen>
     <dimen name="gap">10dp</dimen>
     <dimen name="gap_small">6dp</dimen>
+    <!-- Space between the seek band and the pad row: 1.5x the normal gap, so a
+         thumb that misses the slider lands on nothing instead of the pads. -->
+    <dimen name="seek_gap">15dp</dimen>
     <dimen name="corner">14dp</dimen>
     <dimen name="corner_small">9dp</dimen>
 

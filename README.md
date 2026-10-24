@@ -1,7 +1,7 @@
 # Minimal Audiobook Player
 
-A dependency-free Android audiobook player: **23 Java classes, no libraries at all**
-(no AndroidX, no Kotlin runtime, no image loaders), a **172 KB APK**, and a UI built
+A dependency-free Android audiobook player: **26 Java classes, no libraries at all**
+(no AndroidX, no Kotlin runtime, no image loaders), a **196 KB APK**, and a UI built
 for imprecise fingers on small, old phones.
 
 * **Android 7.0+** (`minSdk 24`), compiled and targeted against API 34.
@@ -12,11 +12,11 @@ for imprecise fingers on small, old phones.
 ## Install the test build
 
 ```
-artifacts/MinimalAudiobookPlayer-1.2.1.apk
+artifacts/AudiobooksMinimalPlayer-1.3.0.apk
 ```
 
 ```bash
-adb install -r artifacts/MinimalAudiobookPlayer-1.2.1.apk
+adb install -r artifacts/AudiobooksMinimalPlayer-1.3.0.apk
 ```
 
 Or copy the APK to the phone and open it (Android will ask to allow installing
@@ -36,16 +36,24 @@ decline, the app offers its own app-specific folder, which needs no permission.
 |--------|-----------|
 | **All files** (tab 1) | One flat list of every audio file under the root folder, sorted naturally *ignoring folders*. The file that is playing is pinned to the top: when a file finishes it moves to the bottom and the next one rises to the top. |
 | **Folders** (tab 2) | Folder explorer with sub-folders, per-folder file counts, breadcrumb path, and an up button. Each folder reopens at the last file you played in it. |
-| **Settings** (tab 3) | Rescan first, then the folder card: storage access (only while it is missing), one-tap **Music / Books / Downloads / SD card** folders, the built-in folder picker and the recent-folder list (tap to switch, trash to forget); then seek step 1–60 s, "delete without confirmation", keep screen on, **volume keys seek while the screen is off**, clear all saved positions, about. |
+| **Settings** (tab 3) | Rescan first, then the folder card: storage access (only while it is missing), one-tap **Music / Books / Downloads / SD card** folders, the built-in folder picker and the recent-folder list (tap to switch, trash to forget); then seek step 1–60 s, "delete without confirmation", keep screen on, **volume keys seek while the screen is off**, clear all saved positions, about. The **version line is a link to the GitHub project** (opens the browser; the app itself still declares no internet permission). |
 
 Swipe left/right to change pages; the tab bar does the same. Back goes
 settings → all files, and folders → parent folder → all files.
+
+### Layout
+
+Portrait: tabs, then the page, then the fixed panel at the bottom. Landscape:
+pages on the left, and the three tab headers sit at the top of the right column
+directly above the transport panel, so the list keeps the full height and the
+tabs stay next to the controls.
 
 ### Playback panel (fixed at the bottom)
 
 ```
 2:00            10:00            -8:00      played · total · remaining
 ───●──────────────────────────────          seek bar, tap to jump
+
 [ 2–60 s ▶]        ( ▶ )        [◀ 2–60 s]  proportional seek pads · play
 [prev]  [- 10 s]  [+ 10 s]  [next]
 ```
@@ -55,6 +63,11 @@ settings → all files, and folders → parent folder → all files.
   (the left one is mirrored). The pad shows the amount live and resets to
   "2–60 s" when released.
 * **Play/Pause** is icon-only and centred between the two pads.
+* **The whole seek band is the slider.** The time labels above the bar are not
+  dead space: a tap anywhere in that band lands on the same position as a tap on
+  the bar below it, so the target is 90 dp tall without adding any height. A
+  wider 15 dp gap separates it from the pads, so a thumb that overshoots hits
+  nothing instead of the seek pads.
 * **−N s / +N s** use the step from settings (long-press them for a full minute).
 * The file name is deliberately not repeated here: the playing file is pinned to
   the top of the All-files list.
@@ -81,9 +94,14 @@ to one volume step instead of doing nothing.
 
 The session installs a `MediaSession.Callback`: Android silently drops every
 adjustment routed to a session without one, which is what made the keys dead in
-1.2.0. Because there is no foreground service, this only works while the
-playback process is alive — Android may end it if it aggressively reclaims
-memory.
+1.2.0.
+
+Holding a key moves the volume **twice as fast** as the stock rocker (two steps
+per event), because one step per key-repeat felt sluggish with the screen off.
+With the setting off, or the screen on, the keys keep their normal single step.
+
+Because there is no foreground service, this only works while the playback
+process is alive — Android may end it if it aggressively reclaims memory.
 
 ## Storage access per Android version
 

@@ -363,7 +363,14 @@
 
             <TextView
                 android:id="@+id/settings_version"
-                style="@style/SettingSummary" />
+                style="@style/SettingSummary"
+                android:background="?android:attr/selectableItemBackground"
+                android:minHeight="@dimen/touch"
+                android:gravity="center_vertical"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:textColor="@color/accent"
+                android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

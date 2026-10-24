@@ -5,7 +5,7 @@ Next-step pointer lives in [TASKS.md](TASKS.md).
 
 Project: **Minimal Audiobook Player** — a dependency-free Android audiobook player
 (minSdk 24 / Android 7.0, targetSdk 34), package `io.github.yuki2ka.audiobookplayer`,
-version 1.2.1.
+version 1.3.0.
 
 ## Milestones
 
@@ -29,16 +29,17 @@ version 1.2.1.
 | 15 | Settings pass: rescan first, quick folders, recent paths, green access state | ✅ |
 | 16 | Pad geometry fix (mirrored back pad) + volume-key seeking (opt-in) | ✅ |
 | 17 | Volume-key regression fix (1.2.1): session callback + release-driven gestures | ✅ |
+| 18 | 1.3.0: 2x volume ramp, landscape tabs on the right, seek band, new APK name, project link | ✅ |
 
 ## Verification (last run)
 
 | Check | Result |
 |-------|--------|
-| `tools/run-tests.sh` | **427 assertions, 0 failed** (locale forced to UTF-8) |
-| `tools/check-resources.py` | 79 ids, 10 layouts, 109 strings, 28 drawables — all references resolve |
-| `tools/build-apk.sh` | `artifacts/MinimalAudiobookPlayer-1.2.1.apk`, **192 KB** |
-| Manifest / badging | package correct, versionCode 4, versionName 1.2.1, **sdkVersion 24**, target 34, launcher `MainActivity` |
-| DEX | dex 037, 113,600 B; no AndroidX, no Kotlin, no `java.time` / `java.nio.file` / streams / `Optional` references (API 24 safe) |
+| `tools/run-tests.sh` | **448 assertions, 0 failed** (locale forced to UTF-8) |
+| `tools/check-resources.py` | 80 ids, 10 layouts, 111 strings, 28 drawables — all references resolve |
+| `tools/build-apk.sh` | `artifacts/AudiobooksMinimalPlayer-1.3.0.apk`, **196 KB** |
+| Manifest / badging | package correct, versionCode 5, versionName 1.3.0, **sdkVersion 24**, target 34, launcher `MainActivity` |
+| DEX | dex 037, 116,752 B; no AndroidX, no Kotlin, no `java.time` / `java.nio.file` / streams / `Optional` references (API 24 safe) |
 | Signature | `apksigner verify`: v2 + v3 true, `CN=Android Debug` (RSA-2048) |
 | Alignment | `zipalign -c -v -p 4`: successful |
 

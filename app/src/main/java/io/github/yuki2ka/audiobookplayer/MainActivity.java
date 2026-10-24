@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.Manifest;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -34,6 +35,7 @@ import io.github.yuki2ka.audiobookplayer.ui.AudioFileAdapter;
 import io.github.yuki2ka.audiobookplayer.ui.FolderAdapter;
 import io.github.yuki2ka.audiobookplayer.ui.FolderBrowser;
 import io.github.yuki2ka.audiobookplayer.ui.SeekPad;
+import io.github.yuki2ka.audiobookplayer.ui.SeekZone;
 import io.github.yuki2ka.audiobookplayer.ui.SwipePager;
 import io.github.yuki2ka.audiobookplayer.util.Fingerprint;
 import io.github.yuki2ka.audiobookplayer.util.SeekCurve;
@@ -89,6 +91,7 @@ public final class MainActivity extends Activity implements
     private TextView timeTotal;
     private TextView timeRemaining;
     private SeekBar seekBar;
+    private SeekZone seekZone;
     private SeekPad padBack;
     private SeekPad padForward;
     private Button btnBack;
@@ -325,6 +328,7 @@ public final class MainActivity extends Activity implements
         timeTotal = findViewById(R.id.time_total);
         timeRemaining = findViewById(R.id.time_remaining);
         seekBar = findViewById(R.id.seek_bar);
+        seekZone = findViewById(R.id.seek_zone);
         padBack = findViewById(R.id.pad_back);
         padForward = findViewById(R.id.pad_forward);
         btnBack = findViewById(R.id.btn_back);
@@ -496,6 +500,25 @@ public final class MainActivity extends Activity implements
                 }
             }
         });
+        // The time labels are part of the slider's target: tapping them above
+        // the thumb scrubs exactly like tapping the bar at the same x.
+        seekZone.setSlider(seekBar);
+        seekZone.setListener(new SeekZone.Listener() {
+            @Override
+            public void onSeekPreview(int progress) {
+                trackingSeek = true;
+                updateTimeLabels(progress, durationMs);
+            }
+
+            @Override
+            public void onSeekCommit(int progress) {
+                trackingSeek = false;
+                if (current != null) {
+                    engine.seekTo(progress);
+                    updateTimeLabels(progress, durationMs);
+                }
+            }
+        });
         updateStepLabels();
         updateTimeLabels(0, 0);
         updateControls();
@@ -601,6 +624,9 @@ public final class MainActivity extends Activity implements
         setControlEnabled(btnBack, preparedTrack);
         setControlEnabled(btnForward, preparedTrack);
         setControlEnabled(seekBar, preparedTrack);
+        // Only the enabled state here: alpha is already dimming the bar, and the
+        // zone's own alpha would dim it twice.
+        seekZone.setEnabled(preparedTrack);
         setControlEnabled(padBack, preparedTrack);
         setControlEnabled(padForward, preparedTrack);
         setControlEnabled(btnPlay, hasTrack || hasFiles);
@@ -1243,7 +1269,26 @@ public final class MainActivity extends Activity implements
         });
         String version = versionName();
         settingsAbout.setText(getString(R.string.about_text, version));
-        settingsVersion.setText(getString(R.string.settings_version, version));
+        // The version line doubles as a link to the project: no permission and
+        // no network call, just an ACTION_VIEW intent handled by the browser.
+        settingsVersion.setText(getString(R.string.settings_project_link, version));
+        settingsVersion.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openProjectPage();
+            }
+        });
+    }
+
+    /** Opens the GitHub project page in whatever browser the user has. */
+    private void openProjectPage() {
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.project_url)));
+        try {
+            startActivity(intent);
+        } catch (RuntimeException e) {
+            // No browser at all: say so instead of crashing.
+            Toast.makeText(this, R.string.project_open_failed, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void refreshSettings() {

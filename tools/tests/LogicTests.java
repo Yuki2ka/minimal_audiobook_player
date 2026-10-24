@@ -35,6 +35,7 @@ public final class LogicTests {
         testTimeFormat();
         testSeekCurve();
         testVolumeGesture();
+        testSeekZoneMapping();
         testNaturalSortBasics();
         testNaturalSortUnicode();
         testDisplayName();
@@ -265,6 +266,38 @@ public final class LogicTests {
         check("reset clears press", !reset.isPressing());
         eq("release after reset", VolumeGesture.NONE, reset.onAdjust(0, 100));
         eq("reset direction", 0, reset.direction());
+    }
+
+    /** The seek band maps a tap above the slider to the same spot on it. */
+    private static void testSeekZoneMapping() {
+        float width = 1000f;
+        float start = 14f;
+        float end = 14f;
+
+        // Edges of the usable track.
+        eq("left edge", 0f, SeekCurve.fractionForX(0f, width, start, end));
+        eq("track start", 0f, SeekCurve.fractionForX(start, width, start, end));
+        eq("middle", 0.5f, SeekCurve.fractionForX(500f, width, start, end));
+        eq("track end", 1f, SeekCurve.fractionForX(width - end, width, start, end));
+        eq("right edge clamps", 1f, SeekCurve.fractionForX(width, width, start, end));
+        eq("past left clamps", 0f, SeekCurve.fractionForX(-50f, width, start, end));
+
+        // Progress follows the slider maximum (the app uses the duration in ms).
+        eq("progress zero", 0, SeekCurve.progressForX(0f, width, start, end, 1000));
+        eq("progress half", 500, SeekCurve.progressForX(500f, width, start, end, 1000));
+        eq("progress full", 1000, SeekCurve.progressForX(width, width, start, end, 1000));
+        eq("progress unknown duration", 0, SeekCurve.progressForX(500f, width, start, end, 0));
+
+        // A zero-width view (before layout) must not divide by zero.
+        eq("unlaid-out width", 0f, SeekCurve.fractionForX(10f, 0f, start, end));
+        eq("insets wider than the view", 0f, SeekCurve.fractionForX(10f, 10f, 14f, 14f));
+
+        // Without insets the mapping is a plain ratio, so a tap above the bar
+        // lands on the same time as a tap on the bar at the same x.
+        for (int x = 0; x <= 1000; x += 125) {
+            float withInsets = SeekCurve.fractionForX(x, width, 0f, 0f);
+            eq("plain ratio at " + x, x / width, withInsets);
+        }
     }
 
     private static void testNaturalSortBasics() {

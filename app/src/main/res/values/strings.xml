@@ -28,7 +28,9 @@
     <string name="current_file">Currently playing</string>
     <string name="prev_short">Prev</string>
     <string name="next_short">Next</string>
-    <string name="settings_version">Version %1$s</string>
+    <string name="settings_project_link">Version %1$s \u2192 GitHub project</string>
+    <string name="project_url" translatable="false">https://github.com/Yuki2ka/minimal_audiobook_player</string>
+    <string name="project_open_failed">No browser installed to open the project page.</string>
     <string name="settings_files_count">%1$d audio files in the library</string>
     <string name="files_count_unknown">Library not scanned yet</string>
 
@@ -104,7 +106,7 @@
     <string name="grant_all_files">Open access settings</string>
     <string name="access_limited_hint">Playback works, but listing and deleting need \u201call files access\u201d.</string>
     <string name="settings_about">About</string>
-    <string name="about_text">Minimal Audiobook Player %1$s\nNo ads, no network access, no trackers.</string>
+    <string name="about_text">Minimal Audiobook Player %1$s\nNo ads, no trackers. The app itself has no internet permission; the link below opens your browser.</string>
 
     <!-- Permission card -->
     <string name="permission_title">Storage access needed</string>

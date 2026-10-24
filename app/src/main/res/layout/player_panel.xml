@@ -17,51 +17,62 @@
     android:paddingEnd="12dp"
     android:paddingBottom="10dp">
 
+    <!-- The whole band (times + slider) scrubs: see ui/SeekZone. The time
+         labels used to be dead space, so they now widen the slider's target
+         instead of costing extra height. -->
+    <io.github.yuki2ka.audiobookplayer.ui.SeekZone
+        android:id="@+id/seek_zone"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="4dp"
+        android:paddingBottom="2dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:baselineAligned="true"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/time_position"
+                style="@style/PlayerTime"
+                android:text="0:00" />
+
+            <TextView
+                android:id="@+id/time_total"
+                style="@style/PlayerTime"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="0:00" />
+
+            <TextView
+                android:id="@+id/time_remaining"
+                style="@style/PlayerTime"
+                android:gravity="end"
+                android:text="0:00" />
+        </LinearLayout>
+
+        <SeekBar
+            android:id="@+id/seek_bar"
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginTop="2dp"
+            android:contentDescription="@string/seek_bar"
+            android:max="1000"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:progress="0"
+            android:progressDrawable="@drawable/seek_progress"
+            android:splitTrack="false"
+            android:thumb="@drawable/seek_thumb" />
+    </io.github.yuki2ka.audiobookplayer.ui.SeekZone>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:baselineAligned="true"
-        android:orientation="horizontal">
-
-        <TextView
-            android:id="@+id/time_position"
-            style="@style/PlayerTime"
-            android:text="0:00" />
-
-        <TextView
-            android:id="@+id/time_total"
-            style="@style/PlayerTime"
-            android:layout_width="0dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:text="0:00" />
-
-        <TextView
-            android:id="@+id/time_remaining"
-            style="@style/PlayerTime"
-            android:gravity="end"
-            android:text="0:00" />
-    </LinearLayout>
-
-    <!-- Precise seek bar: tap anywhere on the bar to jump there. -->
-    <SeekBar
-        android:id="@+id/seek_bar"
-        android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="2dp"
-        android:contentDescription="@string/seek_bar"
-        android:max="1000"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp"
-        android:progress="0"
-        android:progressDrawable="@drawable/seek_progress"
-        android:splitTrack="false"
-        android:thumb="@drawable/seek_thumb" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginTop="@dimen/seek_gap"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 

@@ -3,6 +3,22 @@
 > Updated as work progresses. See [PROGRESS.md](PROGRESS.md) for milestones and
 > verified build/test results.
 
+## v1.3.0 — done, needs a device check
+
+- [x] **Held volume key moves the volume twice as fast** (two stream steps per
+      repeat while capturing the keys); with the setting off or the screen on,
+      the keys keep the stock single step.
+- [x] **Landscape**: the three tab headers moved to the top of the right column,
+      directly above the transport panel; the list now uses the full left column.
+- [x] **Seek band**: the time labels and the slider are one touch target
+      (`ui/SeekZone`) — a tap above the bar seeks to the same position, without
+      spending extra height — and the gap to the pad row grew from 10 dp to
+      15 dp to stop mis-taps. Vertical drags still scroll the landscape panel.
+- [x] APK artifact renamed to **`AudiobooksMinimalPlayer-1.3.0.apk`**.
+- [x] The version line in Settings is a **link to the GitHub project**
+      (`ACTION_VIEW`; no new permission, no network code in the app).
+- [x] Tests 448 assertions, 0 failed; versionCode 5.
+
 ## v1.2.1 — done, needs a device retest
 
 - [x] Fix "the volume keys do nothing at all" with the screen off: the
@@ -17,8 +33,8 @@
       2.5 s. Unit-tested, so a tap can never be mistaken for a hold.
 - [x] `check-resources.py` fails if `setPlaybackToRemote` ever appears without
       `setCallback(...)`, since that combination silently kills the keys.
-- [x] Tests 427 assertions, 0 failed; `MinimalAudiobookPlayer-1.2.1.apk`
-      (versionCode 4) built and verified.
+- [x] Tests 448 assertions, 0 failed; `AudiobooksMinimalPlayer-1.3.0.apk`
+      (versionCode 5) built and verified.
 - [ ] **Confirm on the Android 7 phone**: toggle on, screen off, playing →
       short press seeks by the step, hold changes the media volume; toggle off →
       stock keys and the system volume panel.
@@ -59,7 +75,7 @@
 
 ## Next: on-device QA (needs a phone or emulator; none in this sandbox)
 
-1. Install `artifacts/MinimalAudiobookPlayer-1.2.0.apk` on **Android 7** (the
+1. Install `artifacts/AudiobooksMinimalPlayer-1.3.0.apk` on **Android 7** (the
    minimum) and on **Android 13/14**, then walk through:
    - first launch → permission card → grant → scan;
    - decline the permission and use the app folder;
@@ -68,7 +84,10 @@
    - finish a chapter: it moves to the bottom, the next one starts, the saved row is deleted;
    - open a folder, play a file, leave, come back: the folder opens at that file;
    - delete a file with and without the confirmation setting; decline a delete;
-   - seek by tapping the bar, by ±step and by long-press; change the step in settings;
+   - seek by tapping the bar, by tapping a time label above the bar, by ±step and
+     by long-press; change the step in settings;
+   - rotate to landscape: tabs above the transport panel, list full height;
+   - tap the version line in Settings: the browser opens the GitHub project;
    - press the pads near the middle (≈2–6 s) and near the outer edge (≈40–60 s),
      and drag inside a pad;
    - use Music / Books / Downloads (and SD card if present) quick picks, and the
