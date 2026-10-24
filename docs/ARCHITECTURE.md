@@ -176,14 +176,28 @@ to `position()`, `duration()` and `seekTo()`.
   state comes from a dynamically registered `ACTION_SCREEN_ON/OFF` receiver and
   `PowerManager.isInteractive()`.
 * Activation = framework `MediaSession` (created lazily, only when first needed)
-  with `setPlaybackToRemote(VolumeProvider(RELATIVE, …))` and `setActive(true)`.
-  The system then routes the volume rocker to `onAdjustVolume()` instead of the
-  stream. Deactivation restores stock behaviour, including the volume panel.
-* Short press vs. hold: `onAdjustVolume` has no key-up, so the first event arms
-  a 600 ms timer (longer than the platform repeat delay). Timer fires → seek by
-  `Prefs.seekStep()` through `SeekCurve.steppedPosition`. A second event before
-  that cancels the seek and adjusts `STREAM_MUSIC` instead, continuing until
-  500 ms of silence.
+  with `setCallback(...)`, `setPlaybackToRemote(VolumeProvider(RELATIVE, …))`
+  and `setActive(true)`. The system then routes the volume rocker to
+  `onAdjustVolume()` instead of the stream. Deactivation restores stock
+  behaviour, including the volume panel.
+* **The callback is mandatory.** `MediaSession.postToCallback()` drops every
+  command while `mCallback` is null, and `mCallback` only exists after
+  `setCallback()`. Without it, Android forwards the key to the session and the
+  provider never hears about it — the keys appear completely dead (the 1.2.0
+  bug). `tools/check-resources.py` fails if `setPlaybackToRemote` ever appears
+  without a `setCallback(callback, …)` in the same file.
+* What the platform sends: `MediaSessionLegacyHelper.sendVolumeKeyEvent()`
+  forwards `ACTION_DOWN` (and every auto-repeat) as `+1`/`-1`, and `ACTION_UP`
+  as `0`.
+* `util/VolumeGesture` (pure Java, unit-tested) maps that stream to actions:
+  release within `SHORT_PRESS_MS` (450 ms) → `SEEK`; a repeat before the release
+  → `VOLUME`; a later release without repeats → `VOLUME` (ROMs that do not
+  auto-repeat); `onTimeout()` after `RELEASE_TIMEOUT_MS` (2.5 s) → `VOLUME` (ROMs
+  that swallow the release). Seeking goes through
+  `SeekCurve.steppedPosition()` with `Prefs.seekStep()`; volume goes through
+  `AudioManager.adjustStreamVolume(STREAM_MUSIC, …, FLAG_SHOW_UI)`.
+* Every seek republishes the session's `PlaybackState` position so the system's
+  copy stays honest.
 
 ## Threading summary
 
@@ -202,6 +216,8 @@ produces a `ScanResult` that is applied on the main thread.
 
 * `TimeFormat.clock/clamp`,
 * `SeekCurve` (clamping, monotonic, quadratic spread, 10 s reachable),
+* `VolumeGesture` (tap → seek, repeat/long release/timeout → volume, stray and
+  late releases, threshold boundary, reset),
 * `NaturalSort` numeric/case/accent ordering, Cyrillic, Greek, Japanese, Korean,
   Hebrew, emoji, total-order and NFC idempotence,
 * `AudioFile.displayName`,

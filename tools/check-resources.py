@@ -133,6 +133,21 @@ for name in sorted(set(re.findall(r'@layout/(\w+)', layout_text))):
 # Every @+id declared in only one orientation variant is fine, but every id used
 # from Java must exist in at least one layout (checked above).
 
+# A MediaSession used for remote volume must install a callback: Android drops
+# every adjustment (and therefore every volume key) while no callback exists.
+# This cannot be caught by the desktop tests, so assert it here.
+volume_seeker = os.path.join(SRC, "io", "github", "yuki2ka", "audiobookplayer",
+                             "playback", "VolumeKeySeeker.java")
+if os.path.exists(volume_seeker):
+    seeker_text = open(volume_seeker, encoding="utf-8").read()
+    if "setPlaybackToRemote(" in seeker_text:
+        if not re.search(r"setCallback\(\s*callback", seeker_text):
+            problems.append("VolumeKeySeeker uses setPlaybackToRemote without "
+                            "session.setCallback(...); the system would drop every "
+                            "volume key")
+        if "onSetVolumeTo" not in seeker_text:
+            problems.append("VolumeKeySeeker's VolumeProvider must handle onSetVolumeTo")
+
 if problems:
     print("Resource check FAILED:")
     for problem in problems:

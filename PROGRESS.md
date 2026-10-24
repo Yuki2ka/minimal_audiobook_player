@@ -5,7 +5,7 @@ Next-step pointer lives in [TASKS.md](TASKS.md).
 
 Project: **Minimal Audiobook Player** — a dependency-free Android audiobook player
 (minSdk 24 / Android 7.0, targetSdk 34), package `io.github.yuki2ka.audiobookplayer`,
-version 1.2.0.
+version 1.2.1.
 
 ## Milestones
 
@@ -28,16 +28,17 @@ version 1.2.0.
 | 14 | UI pass: proportional seek pads, icon-only play, compact panel | ✅ |
 | 15 | Settings pass: rescan first, quick folders, recent paths, green access state | ✅ |
 | 16 | Pad geometry fix (mirrored back pad) + volume-key seeking (opt-in) | ✅ |
+| 17 | Volume-key regression fix (1.2.1): session callback + release-driven gestures | ✅ |
 
 ## Verification (last run)
 
 | Check | Result |
 |-------|--------|
-| `tools/run-tests.sh` | **399 assertions, 0 failed** (locale forced to UTF-8) |
+| `tools/run-tests.sh` | **427 assertions, 0 failed** (locale forced to UTF-8) |
 | `tools/check-resources.py` | 79 ids, 10 layouts, 109 strings, 28 drawables — all references resolve |
-| `tools/build-apk.sh` | `artifacts/MinimalAudiobookPlayer-1.2.0.apk`, **192 KB** |
-| Manifest / badging | package correct, versionCode 3, versionName 1.2.0, **sdkVersion 24**, target 34, launcher `MainActivity` |
-| DEX | dex 037, 96,788 B; no AndroidX, no Kotlin, no `java.time` / `java.nio.file` / streams / `Optional` references (API 24 safe) |
+| `tools/build-apk.sh` | `artifacts/MinimalAudiobookPlayer-1.2.1.apk`, **192 KB** |
+| Manifest / badging | package correct, versionCode 4, versionName 1.2.1, **sdkVersion 24**, target 34, launcher `MainActivity` |
+| DEX | dex 037, 113,600 B; no AndroidX, no Kotlin, no `java.time` / `java.nio.file` / streams / `Optional` references (API 24 safe) |
 | Signature | `apksigner verify`: v2 + v3 true, `CN=Android Debug` (RSA-2048) |
 | Alignment | `zipalign -c -v -p 4`: successful |
 
@@ -130,9 +131,14 @@ JAVA_HOME=/tmp/toolchain/jdk-17.0.20.1+1 ANDROID_HOME=/tmp/sdk ./tools/build-apk
   `SeekPad` in any layout omits the attribute.
 - **Volume keys seek while the screen is off** (opt-in): `playback/VolumeKeySeeker`
   activates a framework `MediaSession` with a remote `VolumeProvider` only while
-  (playing && screen off && enabled). Short press seeks by the configured step;
-  an early repeat cancels the seek and switches to stream-volume for the rest of
-  the hold. Screen on → session inactive, keys keep stock behaviour.
+  (playing && screen off && enabled), and **installs a `MediaSession.Callback`** —
+  without one, Android routes the key to the session and then drops the
+  adjustment, so the keys do nothing at all (the 1.2.0 bug). Android sends
+  `+1`/`-1` for the press (and each auto-repeat) and `0` for the release, so
+  `util/VolumeGesture` decides from those events: quick release → seek, repeat
+  or late release → stream volume, no release at all → volume step after 2.5 s.
+  The 450 ms threshold and the timeout are unit-tested. Screen on → session
+  inactive, keys keep stock behaviour.
 - Step seeking (pads, ± buttons, volume keys) now shares
   `SeekCurve.steppedPosition()` and is covered by tests.
 
@@ -142,7 +148,10 @@ JAVA_HOME=/tmp/toolchain/jdk-17.0.20.1+1 ANDROID_HOME=/tmp/sdk ./tools/build-apk
   permission dialogs, MediaPlayer focus changes, delete confirmation, list recycling.
 - Background playback has no foreground service, so aggressive OEM ROMs may kill it.
 - Volume-key capture (`MediaSession` + `VolumeProvider`) could not be tried on a
-  device: whether a ROM forwards the rocker to the session, and the exact
-  short/hold timing, are unverified.
+  device in this sandbox. The 1.2.0 build was reported to leave the keys dead in
+  this mode; the cause (no session callback) is fixed in 1.2.1, and the gesture
+  logic is now unit-tested, but the confirmation has to come from the Android 7
+  phone. A ROM that never forwards the rocker to a media session keeps the keys
+  on their stock behaviour.
 
 Details of the internals: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).

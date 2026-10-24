@@ -12,9 +12,11 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.os.SystemClock;
 
 import io.github.yuki2ka.audiobookplayer.data.Prefs;
 import io.github.yuki2ka.audiobookplayer.util.SeekCurve;
+import io.github.yuki2ka.audiobookplayer.util.VolumeGesture;
 
 /**
  * Turns the hardware volume keys into seek buttons while the screen is off.
@@ -31,14 +33,19 @@ import io.github.yuki2ka.audiobookplayer.util.SeekCurve;
  * screen-on (or pause) the session is deactivated again, so normal volume
  * behaviour and the system volume panel come back.
  *
- * <h3>Short press vs. hold</h3>
- * {@code onAdjustVolume} reports adjustments, not key up/down, so the two
- * gestures are told apart by timing: the first event arms a timer shorter than
- * the platform key-repeat delay. If nothing else arrives, it was a short press
- * and the pad-equivalent seek runs. If another adjustment arrives first, the
- * key is being held, the seek is cancelled and the stream volume is adjusted
- * for the rest of the gesture. A single hold can therefore cost at most one
- * delayed seek on devices that repeat faster than expected.
+ * <p><b>The session must have a callback.</b> {@code MediaSession} drops every
+ * command while no {@code MediaSession.Callback} is installed: the internal
+ * {@code postToCallback()} only queues work once {@code setCallback()} created
+ * its handler. Without one the system routes the keys to the app and then
+ * throws them away, so the keys neither seek nor change the volume.</p>
+ *
+ * <h3>What the platform actually sends</h3>
+ * {@code MediaSessionLegacyHelper.sendVolumeKeyEvent()} forwards the key event
+ * as an adjustment, including the release: {@code ACTION_DOWN} (and every
+ * repeat) arrives as {@code +1}/{@code -1}, {@code ACTION_UP} as {@code 0}.
+ * {@link VolumeGesture} turns that stream into a tap (seek) or a hold (stream
+ * volume) without depending on key auto-repeat; the timeout below is only the
+ * safety net for platforms that swallow the release event entirely.
  */
 public final class VolumeKeySeeker {
 
@@ -51,15 +58,6 @@ public final class VolumeKeySeeker {
         void seekTo(int positionMs);
     }
 
-    /**
-     * How long a lone adjustment waits before it counts as a short press.
-     * Slightly longer than the platform key-repeat delay (~500 ms), so a held
-     * key produces its first repeat before this fires.
-     */
-    private static final int SHORT_PRESS_MS = 600;
-    /** Silence after which a hold is considered finished. */
-    private static final int HOLD_IDLE_MS = 500;
-
     private final Context context;
     private final AudioManager audioManager;
     private final PowerManager powerManager;
@@ -69,27 +67,26 @@ public final class VolumeKeySeeker {
 
     private MediaSession session;
     private VolumeProvider provider;
-    private boolean screenOn;
-    private boolean playing;
-    private boolean pending;
-    private boolean holding;
-    private int pendingDirection;
 
-    private final Runnable shortPress = new Runnable() {
-        @Override
-        public void run() {
-            if (!pending) {
-                return;
-            }
-            pending = false;
-            seek(pendingDirection);
-        }
+    /**
+     * Required for the session to deliver anything at all; see the class
+     * comment. None of the media callbacks are needed here.
+     */
+    private final MediaSession.Callback callback = new MediaSession.Callback() {
     };
 
-    private final Runnable holdFinished = new Runnable() {
+    private boolean screenOn;
+    private boolean playing;
+
+    private final VolumeGesture gesture = new VolumeGesture();
+
+    private final Runnable releaseTimeout = new Runnable() {
         @Override
         public void run() {
-            holding = false;
+            // No release event arrived: keep the key useful as a volume step.
+            if (gesture.onTimeout() == VolumeGesture.VOLUME) {
+                adjustStream(gesture.direction());
+            }
         }
     };
 
@@ -102,7 +99,7 @@ public final class VolumeKeySeeker {
                 refresh();
             } else if (Intent.ACTION_SCREEN_ON.equals(action)) {
                 screenOn = true;
-                cancelPending();
+                cancelGesture();
                 refresh();
             }
         }
@@ -138,15 +135,14 @@ public final class VolumeKeySeeker {
     public void setPlaying(boolean value) {
         playing = value;
         if (!playing) {
-            cancelPending();
+            cancelGesture();
         }
         refresh();
     }
 
     /** Called after the setting changed. */
     public void refresh() {
-        boolean wanted = playing && !screenOn && prefs.volumeKeysSeek();
-        if (wanted) {
+        if (playing && !screenOn && prefs.volumeKeysSeek()) {
             activate();
         } else {
             deactivate();
@@ -160,36 +156,47 @@ public final class VolumeKeySeeker {
         try {
             if (session == null) {
                 session = new MediaSession(context, "Audiobooks volume keys");
+                // Without this callback the system silently drops every
+                // volume adjustment it routes here (see the class comment).
+                session.setCallback(callback, handler);
                 provider = new VolumeProvider(VolumeProvider.VOLUME_CONTROL_RELATIVE, 100, 50) {
                     @Override
                     public void onAdjustVolume(int direction) {
                         onAdjust(direction);
                     }
+
+                    @Override
+                    public void onSetVolumeTo(int volume) {
+                        // Relative control has no slider; nothing to apply.
+                    }
                 };
+                session.setPlaybackToRemote(provider);
             }
+            publishState();
+            session.setActive(true);
+        } catch (RuntimeException e) {
+            releaseSession();
+        }
+    }
+
+    /** Keeps the system's idea of the session position up to date. */
+    private void publishState() {
+        if (session == null) {
+            return;
+        }
+        try {
             session.setPlaybackState(new PlaybackState.Builder()
                     .setActions(PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE
                             | PlaybackState.ACTION_PLAY_PAUSE)
                     .setState(PlaybackState.STATE_PLAYING, Math.max(0, target.position()), 1f)
                     .build());
-            session.setPlaybackToRemote(provider);
-            session.setActive(true);
-        } catch (RuntimeException e) {
-            // A ROM that refuses remote volume must not break playback.
-            if (session != null) {
-                try {
-                    session.release();
-                } catch (RuntimeException ignored) {
-                    // Nothing sensible to do.
-                }
-            }
-            session = null;
-            provider = null;
+        } catch (RuntimeException ignored) {
+            // A stale session must not break key handling.
         }
     }
 
     private void deactivate() {
-        cancelPending();
+        cancelGesture();
         if (session != null) {
             try {
                 session.setActive(false);
@@ -199,53 +206,65 @@ public final class VolumeKeySeeker {
         }
     }
 
-    private void cancelPending() {
-        handler.removeCallbacks(shortPress);
-        handler.removeCallbacks(holdFinished);
-        pending = false;
-        holding = false;
+    private void releaseSession() {
+        // A ROM that refuses remote volume must not break playback.
+        if (session != null) {
+            try {
+                session.release();
+            } catch (RuntimeException ignored) {
+                // Nothing sensible to do.
+            }
+        }
+        session = null;
+        provider = null;
     }
 
+    private void cancelGesture() {
+        handler.removeCallbacks(releaseTimeout);
+        gesture.reset();
+    }
+
+    /**
+     * One adjustment from the system: {@code direction} is {@code +1} for the
+     * down-facing side, {@code -1} for the up-facing side, or {@code 0} when the
+     * key is released.
+     */
     private void onAdjust(int direction) {
         if (audioManager == null) {
             return;
         }
-        // Screen came back on between the key press and the callback.
-        if (screenOn || !prefs.volumeKeysSeek()) {
+        if (direction != 0 && (screenOn || !prefs.volumeKeysSeek())) {
+            // Session is on its way out: keep the key useful meanwhile.
             adjustStream(direction);
             return;
         }
-        pendingDirection = direction >= 0 ? 1 : -1;
-        if (holding) {
-            adjustStream(direction);
-            handler.removeCallbacks(holdFinished);
-            handler.postDelayed(holdFinished, HOLD_IDLE_MS);
-            return;
+        int action = gesture.onAdjust(direction, SystemClock.uptimeMillis());
+        handler.removeCallbacks(releaseTimeout);
+        if (gesture.isPressing()) {
+            handler.postDelayed(releaseTimeout, VolumeGesture.RELEASE_TIMEOUT_MS);
         }
-        if (pending) {
-            // Second adjustment before the short-press timer fired: the key is
-            // held down, so this is a volume gesture after all.
-            handler.removeCallbacks(shortPress);
-            pending = false;
-            holding = true;
-            adjustStream(direction);
-            handler.removeCallbacks(holdFinished);
-            handler.postDelayed(holdFinished, HOLD_IDLE_MS);
-            return;
+        if (action == VolumeGesture.SEEK) {
+            seek(gesture.direction());
+        } else if (action == VolumeGesture.VOLUME) {
+            adjustStream(gesture.direction());
         }
-        pending = true;
-        handler.postDelayed(shortPress, SHORT_PRESS_MS);
     }
 
-    /** Seeks by the configured step, clamped to the track. */
+    /**
+     * Seeks by the configured step, clamped to the track. When there is nothing
+     * to seek (unknown duration yet) the key still does something useful
+     * instead of being swallowed.
+     */
     private void seek(int direction) {
         int duration = target.duration();
         if (duration <= 0) {
+            adjustStream(direction);
             return;
         }
         int next = SeekCurve.steppedPosition(
                 target.position(), direction, prefs.seekStep() * 1000, duration);
         target.seekTo(next);
+        publishState();
     }
 
     private void adjustStream(int direction) {

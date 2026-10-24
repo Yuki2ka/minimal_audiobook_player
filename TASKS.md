@@ -3,6 +3,26 @@
 > Updated as work progresses. See [PROGRESS.md](PROGRESS.md) for milestones and
 > verified build/test results.
 
+## v1.2.1 — done, needs a device retest
+
+- [x] Fix "the volume keys do nothing at all" with the screen off: the
+      remote-volume `MediaSession` now installs a `MediaSession.Callback`
+      (Android drops every adjustment routed to a session without one), keeps
+      the published playback position current, and falls back to a volume step
+      when there is no duration to seek in yet.
+- [x] Gesture logic extracted to `util/VolumeGesture` and driven by the events
+      Android really sends (`+1`/`-1` for the press and each repeat, `0` on
+      release): quick release seeks, a repeat or a late release changes the
+      music volume, and a swallowed release still gives one volume step after
+      2.5 s. Unit-tested, so a tap can never be mistaken for a hold.
+- [x] `check-resources.py` fails if `setPlaybackToRemote` ever appears without
+      `setCallback(...)`, since that combination silently kills the keys.
+- [x] Tests 427 assertions, 0 failed; `MinimalAudiobookPlayer-1.2.1.apk`
+      (versionCode 4) built and verified.
+- [ ] **Confirm on the Android 7 phone**: toggle on, screen off, playing →
+      short press seeks by the step, hold changes the media volume; toggle off →
+      stock keys and the system volume panel.
+
 ## v1.2 — done
 
 - [x] Left (back) pad mirrored: minimum next to the play button, maximum at the

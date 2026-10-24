@@ -19,6 +19,7 @@ import io.github.yuki2ka.audiobookplayer.util.Fingerprint;
 import io.github.yuki2ka.audiobookplayer.util.SeekCurve;
 import io.github.yuki2ka.audiobookplayer.util.NaturalSort;
 import io.github.yuki2ka.audiobookplayer.util.TimeFormat;
+import io.github.yuki2ka.audiobookplayer.util.VolumeGesture;
 
 /**
  * Plain-Java test runner for everything that does not depend on Android.
@@ -33,6 +34,7 @@ public final class LogicTests {
         System.out.println("Running logic tests (locale: " + java.util.Locale.getDefault() + ")");
         testTimeFormat();
         testSeekCurve();
+        testVolumeGesture();
         testNaturalSortBasics();
         testNaturalSortUnicode();
         testDisplayName();
@@ -194,6 +196,75 @@ public final class LogicTests {
             }
         }
         check("10 s is reachable on the pad", reachable);
+    }
+
+    /**
+     * The volume-key gesture must never misfire: a tap seeks, a hold changes the
+     * volume, and nothing at all may ever be silently swallowed.
+     */
+    private static void testVolumeGesture() {
+        // Short press = a down and a quick release.
+        VolumeGesture tap = new VolumeGesture();
+        eq("tap down does nothing yet", VolumeGesture.NONE, tap.onAdjust(1, 0));
+        check("tap is pressing", tap.isPressing());
+        eq("tap release seeks", VolumeGesture.SEEK, tap.onAdjust(0, 100));
+        check("tap released", !tap.isPressing());
+        eq("tap seeks forward", 1, tap.direction());
+
+        VolumeGesture back = new VolumeGesture();
+        eq("back down", VolumeGesture.NONE, back.onAdjust(-1, 0));
+        eq("back release seeks", VolumeGesture.SEEK, back.onAdjust(0, 120));
+        eq("back seeks backward", -1, back.direction());
+
+        // A release with no press in flight is ignored.
+        eq("stray release", VolumeGesture.NONE, new VolumeGesture().onAdjust(0, 10));
+
+        // Hold on a device that repeats: the repeat is the volume gesture, and
+        // the release must not seek afterwards.
+        VolumeGesture hold = new VolumeGesture();
+        eq("hold down", VolumeGesture.NONE, hold.onAdjust(1, 0));
+        eq("first repeat changes volume", VolumeGesture.VOLUME, hold.onAdjust(1, 500));
+        eq("second repeat changes volume", VolumeGesture.VOLUME, hold.onAdjust(1, 550));
+        eq("hold release does nothing", VolumeGesture.NONE, hold.onAdjust(0, 900));
+        check("hold finished", !hold.isPressing());
+
+        // Hold on a device that does not repeat: only the duration is left.
+        VolumeGesture slowHold = new VolumeGesture();
+        eq("slow down", VolumeGesture.NONE, slowHold.onAdjust(-1, 0));
+        eq("slow release changes volume", VolumeGesture.VOLUME, slowHold.onAdjust(0, 800));
+        eq("slow hold direction", -1, slowHold.direction());
+
+        // The threshold itself belongs to the hold, not to the tap.
+        VolumeGesture edge = new VolumeGesture();
+        edge.onAdjust(1, 0);
+        eq("just under threshold seeks", VolumeGesture.SEEK,
+                edge.onAdjust(0, VolumeGesture.SHORT_PRESS_MS - 1));
+        VolumeGesture edgeHold = new VolumeGesture();
+        edgeHold.onAdjust(1, 0);
+        eq("threshold changes volume", VolumeGesture.VOLUME,
+                edgeHold.onAdjust(0, VolumeGesture.SHORT_PRESS_MS));
+
+        // Two taps in a row are two seeks, not one hold.
+        VolumeGesture repeatTap = new VolumeGesture();
+        repeatTap.onAdjust(1, 0);
+        eq("first of two taps", VolumeGesture.SEEK, repeatTap.onAdjust(0, 100));
+        repeatTap.onAdjust(1, 300);
+        eq("second of two taps", VolumeGesture.SEEK, repeatTap.onAdjust(0, 400));
+
+        // A swallowed release must still leave the key doing something.
+        VolumeGesture lost = new VolumeGesture();
+        eq("lost down", VolumeGesture.NONE, lost.onAdjust(1, 0));
+        eq("timeout changes volume", VolumeGesture.VOLUME, lost.onTimeout());
+        check("timeout clears press", !lost.isPressing());
+        eq("late release ignored", VolumeGesture.NONE, lost.onAdjust(0, 3000));
+
+        // reset() (screen on, pause) forgets the gesture in flight.
+        VolumeGesture reset = new VolumeGesture();
+        reset.onAdjust(1, 0);
+        reset.reset();
+        check("reset clears press", !reset.isPressing());
+        eq("release after reset", VolumeGesture.NONE, reset.onAdjust(0, 100));
+        eq("reset direction", 0, reset.direction());
     }
 
     private static void testNaturalSortBasics() {

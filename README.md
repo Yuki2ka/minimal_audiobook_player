@@ -12,11 +12,11 @@ for imprecise fingers on small, old phones.
 ## Install the test build
 
 ```
-artifacts/MinimalAudiobookPlayer-1.2.0.apk
+artifacts/MinimalAudiobookPlayer-1.2.1.apk
 ```
 
 ```bash
-adb install -r artifacts/MinimalAudiobookPlayer-1.2.0.apk
+adb install -r artifacts/MinimalAudiobookPlayer-1.2.1.apk
 ```
 
 Or copy the APK to the phone and open it (Android will ask to allow installing
@@ -72,10 +72,18 @@ find the phone or wake it. **Holding** a key still changes the volume, and with
 the screen on the keys behave normally (system volume panel included).
 
 The app captures the keys through a framework `MediaSession` with a remote
-`VolumeProvider`, and distinguishes "tap" from "hold" by timing: a lone press
-is applied after ~0.6 s, a repeat cancels the seek and becomes a volume gesture.
-Because there is no foreground service, this only works while the playback
-process is alive — Android may end it if it aggressively reclaims memory.
+`VolumeProvider`. Android forwards such a press as "adjust up/down" and then
+"0" when the key is released, so the gesture logic (`util/VolumeGesture`,
+covered by the JVM tests) works from those events: a release that arrives
+within 450 ms is a tap → seek, while a key repeat (or a later release) is a
+hold → music volume. If a ROM never sends the release event, the key falls back
+to one volume step instead of doing nothing.
+
+The session installs a `MediaSession.Callback`: Android silently drops every
+adjustment routed to a session without one, which is what made the keys dead in
+1.2.0. Because there is no foreground service, this only works while the
+playback process is alive — Android may end it if it aggressively reclaims
+memory.
 
 ## Storage access per Android version
 
@@ -174,9 +182,11 @@ docs/ARCHITECTURE.md           internals and design rationale
   aggressive OEM ROMs, and there are no lock-screen or notification controls.
   Headphone unplugging pauses playback; Bluetooth media buttons are not handled.
   The volume-key feature depends on the same process staying alive.
-* Volume-key capture was **not verified on a device** (no emulator here). If a
-  ROM does not forward volume keys to a media session, a hold may seek once
-  instead of changing the volume.
+* Volume keys go through the framework's media-session volume path. 1.2.0
+  missed the `MediaSession.Callback` that Android requires before it delivers
+  anything to a remote-volume session, so the keys did nothing at all; 1.2.1
+  fixes that. A ROM that does not forward volume keys to a media session at all
+  simply leaves the keys on their stock behaviour.
 * Deleting files uses the file-system API, so on Android 11+ it needs
   "all files access". The read-only fallback can play but may not delete.
 * Positions are keyed by content: two byte-identical copies of the same file
