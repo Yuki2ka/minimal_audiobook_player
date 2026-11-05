@@ -5,7 +5,7 @@ Next-step pointer lives in [TASKS.md](TASKS.md).
 
 Project: **Minimal Audiobook Player** — a dependency-free Android audiobook player
 (minSdk 24 / Android 7.0, targetSdk 34), package `io.github.yuki2ka.audiobookplayer`,
-version 1.6.0.
+version 1.7.0.
 
 ## Milestones
 
@@ -33,16 +33,17 @@ version 1.6.0.
 | 19 | 1.4.0: fast play button + speed setting (x1.1–x2.0, default x1.3) | ✅ |
 | 20 | 1.5.0: discrete whole-row circular browsing + folder-row deletion | ✅ |
 | 21 | 1.6.0: folder delimiters, equal rows, live drags, equal/highlighted speed buttons | ✅ built |
+| 22 | 1.7.0: readable file rows (wrap / font-scaled discrete height) + speed under the glyph | ✅ built |
 
 ## Verification (last run)
 
 | Check | Result |
 |-------|--------|
 | `tools/run-tests.sh` | **560 assertions, 0 failed** (locale forced to UTF-8) |
-| `tools/check-resources.py` | 90 ids, 11 layouts, 124 strings, 31 drawables — all references resolve |
-| Full app Java compilation | Passed against an Android boot classpath, including the modified activity/adapters |
-| `tools/build-apk.sh` | `artifacts/AudiobooksMinimalPlayer-1.6.0.apk`, **224 KB** |
-| Manifest / badging | package correct, versionCode 8, versionName 1.6.0, **sdkVersion 24**, target 34, launcher `MainActivity` |
+| `tools/check-resources.py` | 90 ids, 11 layouts, 124 strings, 31 drawables — all references resolve, plus the file-row / speed-label shape checks |
+| Full app Java compilation | Passed against an Android boot classpath, including the modified adapters / list view |
+| `tools/build-apk.sh` | `artifacts/AudiobooksMinimalPlayer-1.7.0.apk`, **224 KB** |
+| Manifest / badging | package correct, versionCode 9, versionName 1.7.0, **sdkVersion 24**, target 34, launcher `MainActivity` |
 | DEX | `classes.dex` packaged by D8 with `--min-api 24`; no AndroidX or Kotlin runtime |
 | Signature | `apksigner verify`: v2 + v3 true, `CN=Android Debug` (RSA-2048) |
 | Alignment | `zipalign -c -v -p 4`: successful |
@@ -154,6 +155,35 @@ JAVA_HOME=/tmp/toolchain/jdk-17.0.20.1+1 ./tools/run-tests.sh
   inactive, keys keep stock behaviour.
 - Step seeking (pads, ± buttons, volume keys) now shares
   `SeekCurve.steppedPosition()` and is covered by tests.
+
+## 1.7.0 changes (layout regression pass)
+
+- **File rows grow with their text again.** The discrete-list rewrite put the
+  name and the size / saved-position info into a fixed 64 dp vertical box with
+  a weighted inner row; on phones with larger text the info line was cut in
+  half. `item_audio.xml` is now a `FrameLayout` with `wrap_content` +
+  `minHeight=64 dp` (as in 1.4.0): names may wrap to two lines, and the
+  folder-group closing rule is overlaid at the bottom instead of consuming a
+  pixel of text height.
+- **Discrete rows still have one exact extent.** `AudioFileAdapter` fixes file
+  rows and delimiters to `64 sp` (64 dp at the normal font scale, larger when
+  the user scales text up) and limits names to one line in that mode.
+  `DiscreteListView` uses that explicit extent for the bottom gutter and the
+  drag step, instead of measuring whatever child happened to be laid out —
+  which could expose a half row at the bottom.
+- **Fast speed is back under the double triangle.** The inline 1.6.0 label
+  shared 88 dp with the icon and got ellipsised to "..." at larger font sizes.
+  The button stays the same 88×68 dp frame with the same pause glyph, accent
+  highlight and press rules, but now stacks a 28 dp glyph over a full-width
+  label with no `singleLine`/`ellipsize`. The alternative — large background
+  triangles with contrasting text over them — was rejected: the text would
+  have to fight the accent-filled selected state, and overlays age badly with
+  font scaling and low-contrast screens.
+- `tools/check-resources.py` now fails if either layout shape regresses (fixed
+  root, one-line title, inline/ellipsised speed label, missing `sp` row dimen).
+- Built and verified: 560 assertions, 0 failed; resource check, full Java
+  compilation, `aapt2` resource dump (`64.000000sp`), D8 with `--min-api 24`,
+  zipalign and v2 + v3 signing all pass.
 
 ## Known risks (device-only)
 

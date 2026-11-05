@@ -38,6 +38,7 @@ public final class AudioFileAdapter extends BaseAdapter {
     private final LayoutInflater inflater;
     private final Callbacks callbacks;
     private final boolean showFolderNames;
+    private final int discreteRowHeight;
     private final FileListRows rows = new FileListRows();
 
     private List<AudioFile> items = new ArrayList<>();
@@ -50,6 +51,10 @@ public final class AudioFileAdapter extends BaseAdapter {
         this.inflater = LayoutInflater.from(context);
         this.callbacks = callbacks;
         this.showFolderNames = showFolderNames;
+        // sp dimension: discrete rows grow with the system font scale instead
+        // of squeezing the size / resume line into a hard 64 dp box.
+        this.discreteRowHeight =
+                context.getResources().getDimensionPixelSize(R.dimen.row_discrete_height);
     }
 
     /** Keeps a reference to the live queue list (no copy of the files). */
@@ -75,9 +80,11 @@ public final class AudioFileAdapter extends BaseAdapter {
     }
 
     /**
-     * File rows have the same fixed height in both modes. Folder delimiters
-     * expand to that height only in discrete mode, so every displayed row has
-     * one exact, predictable extent.
+     * In smooth mode file rows grow with their two text lines (minimum 64 dp),
+     * so long names and the size / saved-position info are never clipped. In
+     * discrete mode every row — file or folder delimiter — gets the same exact,
+     * font-scaled height and file names go back to one line, so the viewport
+     * still holds an integer number of complete rows.
      */
     public void setDiscreteMode(boolean enabled) {
         if (discreteMode == enabled) {
@@ -150,9 +157,9 @@ public final class AudioFileAdapter extends BaseAdapter {
             holder = (FolderHolder) convertView.getTag();
         }
 
-        int height = context.getResources().getDimensionPixelSize(discreteMode
-                ? R.dimen.row_min_height
-                : R.dimen.folder_delimiter_height);
+        int height = discreteMode
+                ? discreteRowHeight
+                : context.getResources().getDimensionPixelSize(R.dimen.folder_delimiter_height);
         ViewGroup.LayoutParams params = holder.root.getLayoutParams();
         if (params != null && params.height != height) {
             params.height = height;
@@ -193,6 +200,18 @@ public final class AudioFileAdapter extends BaseAdapter {
         } else {
             holder = (Holder) convertView.getTag();
         }
+
+        // Smooth mode restores the pre-discrete geometry: the row wraps its
+        // content and can grow past the 64 dp minimum. Discrete mode fixes the
+        // root to one exact height so whole-row browsing stays predictable.
+        ViewGroup.LayoutParams params = holder.root.getLayoutParams();
+        int height = discreteMode ? discreteRowHeight : ViewGroup.LayoutParams.WRAP_CONTENT;
+        if (params != null && params.height != height) {
+            params.height = height;
+            holder.root.setLayoutParams(params);
+        }
+        // A single-line name is needed only when the row height is fixed.
+        holder.title.setMaxLines(discreteMode ? 1 : 2);
 
         AudioFile file = rows.fileAt(position);
         holder.file = file;

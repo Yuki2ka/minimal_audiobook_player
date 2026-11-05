@@ -10,7 +10,7 @@ useful after a break: every non-obvious decision here exists because of the
 |------------|-------------|
 | Android 7.0 (`minSdk 24`) | No `java.time`, no `java.nio.file`, no streams-heavy code, no `List.of`; everything compiles against API 34 but runs on 24. |
 | Minimal memory / install size | Zero dependencies, framework views only, one decoder, vector drawables, no bitmaps in the UI, no reflection. |
-| Imprecise fingers | All interactive targets ≥ 48 dp, primary controls 52–68 dp, rows 64 dp, controls spread across the full width. |
+| Imprecise fingers | All interactive targets ≥ 48 dp, primary controls 52–68 dp, rows at least 64 dp, controls spread across the full width. |
 | User-chosen folder only | No full-file-system scan; `Scanner` walks one tree and nothing else. |
 | Non-Latin file names | NFC normalisation at every boundary, `Collator`-based natural sort, UTF-8 everywhere. |
 
@@ -131,13 +131,19 @@ only size/resume information instead of repeating the folder name.
 
 `ui/DiscreteListView` owns vertical swipe detection only while the setting is
 on. It bypasses ListView's pixel drag/fling and adjusts the bottom padding to
-an integer number of rows. File rows are fixed at 64 dp in both smooth and
-discrete modes; delimiters expand to 64 dp in discrete mode so every row has
-the same extent. `util/DiscreteDrag` emits only newly crossed row deltas while
-the finger moves (including reversals), and release applies no delta twice. A
-short swipe still moves one row. Horizontal swipes belong to `SwipePager`, and
-taps on the row/delete button stay normal. The activity applies the row steps
-and queue rotations on the main thread.
+an integer number of rows. A file row (`layout/item_audio.xml`) is a
+`FrameLayout` that wraps its content with a 64 dp minimum: names can use two
+lines and the size / saved-position line stays fully visible. The folder-group
+closing rule is overlaid at the bottom, not stacked under the text. In discrete
+mode `AudioFileAdapter` gives file rows and folder delimiters the same exact
+`64 sp` height (it grows with the system font scale) and limits names to one
+line, and `DiscreteListView` uses that explicit extent for both its bottom
+gutter and the finger's row step — a measured child height could otherwise
+leave a half row visible. `util/DiscreteDrag` emits only newly crossed row
+deltas while the finger moves (including reversals), and release applies no
+delta twice. A short swipe still moves one row. Horizontal swipes belong to
+`SwipePager`, and taps on the row/delete button stay normal. The activity
+applies the row steps and queue rotations on the main thread.
 
 `PlayQueue`, `FileListRows` and `DiscreteDrag` are pure Java (no Android
 imports) and are covered by the JVM tests.

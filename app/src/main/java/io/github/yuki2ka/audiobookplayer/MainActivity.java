@@ -695,11 +695,11 @@ public final class MainActivity extends Activity implements
         btnFastPlay.setContentDescription(getString(playing && fast
                 ? R.string.pause
                 : R.string.play_fast_at, PlaybackSpeed.label(prefs.fastSpeedPercent())));
-        // The fast icon and inline speed label duplicate their parent's
-        // selected state, so ic_fast_tint switches both to accent ink.
+        // The fast icon and the speed label underneath it duplicate their
+        // parent's selected state, so ic_fast_tint switches both to accent ink.
     }
 
-    /** Shows the configured fast speed beside its icon and in Settings. */
+    /** Shows the configured fast speed under its icon and in Settings. */
     private void updateSpeedLabels() {
         String label = PlaybackSpeed.label(prefs.fastSpeedPercent());
         if (fastSpeedLabel != null) {

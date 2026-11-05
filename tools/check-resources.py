@@ -4,12 +4,14 @@
 aapt2 already fails on missing resources, but this catches the reverse class of
 bugs that only show up at runtime: findViewById() on an id that no layout
 declares (e.g. a typo in an include, or an id that exists only in one
-orientation-specific layout).
+orientation-specific layout). It also locks in the two layout shapes that keep
+file-row text and the fast-speed label fully visible.
 """
 import glob
 import os
 import re
 import sys
+import xml.etree.ElementTree as ET
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RES = os.path.join(ROOT, "app", "src", "main", "res")
@@ -147,6 +149,56 @@ if os.path.exists(volume_seeker):
                             "volume key")
         if "onSetVolumeTo" not in seeker_text:
             problems.append("VolumeKeySeeker's VolumeProvider must handle onSetVolumeTo")
+
+# Layout regressions that only show up on a device with real text / a larger
+# system font. Both were introduced by the discrete-list rewrite:
+#   * a fixed-height vertical row squeezed the size / resume-position line;
+#   * the fast speed sat beside its icon and was ellipsised to "...".
+# Keep the two shapes that fix them explicit in the XML.
+ANDROID = "{http://schemas.android.com/apk/res/android}"
+def layout(name):
+    return ET.parse(os.path.join(RES, "layout", name)).getroot()
+
+def with_id(root, name):
+    for element in root.iter():
+        if element.get(ANDROID + "id") == "@+id/" + name:
+            return element
+    return None
+
+audio = layout("item_audio.xml")
+if audio.tag != "FrameLayout" or audio.get(ANDROID + "layout_height") != "wrap_content" \
+        or audio.get(ANDROID + "minHeight") != "@dimen/row_min_height":
+    problems.append("item_audio.xml root must wrap_content with minHeight=row_min_height, "
+                    "otherwise long names and the size / saved-position line get clipped")
+title = with_id(audio, "row_title")
+if title is None or title.get(ANDROID + "singleLine") == "true" \
+        or title.get(ANDROID + "maxLines") != "2":
+    problems.append("item_audio.xml row_title must allow two lines (no singleLine)")
+subtitle = with_id(audio, "row_subtitle")
+if subtitle is None or subtitle.get(ANDROID + "singleLine") != "true":
+    problems.append("item_audio.xml row_subtitle must stay one line for even row heights")
+group_end = with_id(audio, "row_group_end")
+if group_end is None or group_end.get(ANDROID + "layout_gravity") != "bottom":
+    problems.append("item_audio.xml row_group_end must overlay the bottom, not take "
+                    "height from the text")
+
+panel = layout("player_panel.xml")
+fast_button = with_id(panel, "btn_fast_play")
+if fast_button is None or fast_button.tag != "LinearLayout" \
+        or fast_button.get(ANDROID + "orientation") != "vertical":
+    problems.append("player_panel.xml btn_fast_play must be vertical: its speed label "
+                    "belongs under the glyph, not beside it")
+speed_label = with_id(fast_button, "fast_speed_label") if fast_button is not None else None
+if speed_label is None or speed_label.get(ANDROID + "layout_width") != "match_parent" \
+        or speed_label.get(ANDROID + "singleLine") == "true" \
+        or speed_label.get(ANDROID + "ellipsize") is not None:
+    problems.append("player_panel.xml fast_speed_label needs full width and no ellipsize, "
+                    "otherwise the speed is truncated to '...'")
+
+discrete_dimen = re.search(r'<dimen name="row_discrete_height">(\d+)sp</dimen>', values_text)
+if discrete_dimen is None:
+    problems.append("row_discrete_height must be an sp dimension so discrete rows grow "
+                    "with the system font size")
 
 if problems:
     print("Resource check FAILED:")

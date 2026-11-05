@@ -12,11 +12,11 @@ for imprecise fingers on small, old phones.
 ## Install the test build
 
 ```
-artifacts/AudiobooksMinimalPlayer-1.6.0.apk
+artifacts/AudiobooksMinimalPlayer-1.7.0.apk
 ```
 
 ```bash
-adb install -r artifacts/AudiobooksMinimalPlayer-1.6.0.apk
+adb install -r artifacts/AudiobooksMinimalPlayer-1.7.0.apk
 ```
 
 Or copy the APK to the phone and open it (Android will ask to allow installing
@@ -44,13 +44,16 @@ settings → all files, and folders → parent folder → all files.
 ### Discrete file-list scrolling
 
 The Settings checkbox is off by default, preserving the normal smooth ListView.
-When enabled, file rows keep exactly the same 64 dp height as in smooth mode,
-folder delimiters use that height too, and only complete rows are shown. A
-vertical swipe jumps by whole rows without a pixel scroll or fling; rows change
-*while dragging* as each full row is crossed. A short swipe moves one row on
-release. Swipe up to browse forward. Swipe down to browse backward: at the top, the last queue
-item is inserted at the beginning, so previous tracks are immediately reachable.
-The list wraps at either end without changing the playing track. Starting or
+In smooth mode a file row grows with its text (at least 64 dp): a long name can
+wrap to two lines and the size / saved-position line is never clipped. When
+discrete browsing is enabled, every row — file or folder delimiter — uses one
+exact, font-scaled height (64 sp, i.e. 64 dp at the normal text size), so only
+complete rows are shown even with large system text. A vertical swipe jumps by
+whole rows without a pixel scroll or fling; rows change *while dragging* as each
+full row is crossed. A short swipe moves one row on release. Swipe up to browse
+forward. Swipe down to browse backward: at the top, the last queue item is
+inserted at the beginning, so previous tracks are immediately reachable. The
+list wraps at either end without changing the playing track. Starting or
 advancing playback re-anchors the current track at the top, like a virtual sheet
 of files.
 
@@ -67,7 +70,8 @@ tabs stay next to the controls.
 2:00            10:00            -8:00      played · total · remaining
 ───●──────────────────────────────          seek bar, tap to jump
 
-[ 2–60 s ▶]   ( ▶ ) [▶▶ x1.3]  [◀ 2–60 s]  seek pads · equal play buttons
+[ 2–60 s ▶]   ( ▶ ) [▶▶]  [◀ 2–60 s]  seek pads · equal play buttons
+                      x1.3                    speed under the fast glyph
 [prev]  [- 10 s]  [+ 10 s]  [next]
 ```
 
@@ -76,9 +80,11 @@ tabs stay next to the controls.
   (the left one is mirrored). The pad shows the amount live and resets to
   "2–60 s" when released.
 * **Play/Pause** is icon-only and centred between the two pads.
-* **Fast play** sits right of the play button in the same 88×68 dp frame
-  (double triangle with the chosen speed beside it, default **x1.3**). The
-  rules are the same for both buttons:
+* **Fast play** sits right of the play button in the same 88×68 dp frame:
+  a large double triangle with the chosen speed **underneath** it (default
+  **x1.3**). The label uses the button's full width, so it cannot be squeezed
+  into "..." when the system font is enlarged. The rules are the same for both
+  buttons:
   * paused → the press starts playback **at that button's speed** (x1 for the
     plain button, the speed from Settings for the fast one);
   * playing at that speed → the press **pauses** (second press of the same
@@ -98,8 +104,9 @@ tabs stay next to the controls.
 * The file name is deliberately not repeated here: the playing file is pinned to
   the top of the All-files list.
 
-Audio-file and subfolder rows are at least 64 dp tall, and each delete button
-is its own 48×48 dp target, set back from the right edge. Tapping a row to play
+Audio-file and subfolder rows are at least 64 dp tall and grow to fit their
+text (names wrap to two lines in smooth mode); each delete button is its own
+48×48 dp target, set back from the right edge. Tapping a row to play
 or open it therefore almost never deletes it. Deleting asks yes/no unless you
 switch the confirmation off in Settings; deleting a folder removes its contents
 too. The parent-navigation row has no delete button.

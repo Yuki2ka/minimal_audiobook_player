@@ -43,6 +43,8 @@ public final class DiscreteListView extends ListView {
 
     private SwipeListener swipeListener;
     private boolean discreteMode;
+    /** Exact extent of a discrete row; 0 until discrete mode is enabled. */
+    private int discreteRowHeight;
     private boolean trackingTouch;
     private boolean ignoreGesture;
     private boolean capturedSwipe;
@@ -83,8 +85,14 @@ public final class DiscreteListView extends ListView {
         setOverScrollMode(enabled ? View.OVER_SCROLL_NEVER : defaultOverScrollMode);
         setClipToPadding(enabled || defaultClipToPadding);
         if (enabled) {
+            // All rows use one explicit height, so the bottom gutter (and the
+            // finger's row step) cannot be computed from a partially laid-out
+            // or mixed file/delimiter row. sp makes it track the font scale.
+            discreteRowHeight =
+                    getResources().getDimensionPixelSize(R.dimen.row_discrete_height);
             updateDiscretePadding(getHeight());
         } else {
+            discreteRowHeight = 0;
             setPadding(defaultPaddingLeft, defaultPaddingTop,
                     defaultPaddingRight, defaultPaddingBottom);
         }
@@ -95,6 +103,8 @@ public final class DiscreteListView extends ListView {
     /** Recalculates the bottom inset after the adapter's row height changes. */
     public void refreshDiscreteLayout() {
         if (discreteMode) {
+            discreteRowHeight =
+                    getResources().getDimensionPixelSize(R.dimen.row_discrete_height);
             updateDiscretePadding(getHeight());
             requestLayout();
         }
@@ -245,6 +255,9 @@ public final class DiscreteListView extends ListView {
     }
 
     private int rowExtent() {
+        if (discreteMode && discreteRowHeight > 0) {
+            return discreteRowHeight;
+        }
         if (getChildCount() > 1) {
             int extent = getChildAt(1).getTop() - getChildAt(0).getTop();
             if (extent > 0) {

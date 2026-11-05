@@ -3,6 +3,29 @@
 > Updated as work progresses. See [PROGRESS.md](PROGRESS.md) for milestones and
 > verified build/test results.
 
+## v1.7.0 — built, needs a device check
+
+- [x] **File-list text is readable again**: a file row wraps its content with a
+      64 dp minimum (two-line names, full size / saved-position line), like the
+      layout used before discrete browsing; the group-closing rule is overlaid
+      so it cannot squeeze the text. In discrete mode every row uses one exact
+      64 sp height and one-line names, so complete rows are still shown.
+- [x] **Discrete row extent is explicit**: `DiscreteListView` uses that height
+      for the bottom gutter and the finger's row step instead of a measured
+      child, which could leave a half row visible.
+- [x] **Fast speed under the glyph**: the equal 88×68 dp button stacks a 28 dp
+      double triangle over a full-width `x1.3` label — no inline squeeze, no
+      "...". The pause glyph, accent highlight and press rules are unchanged.
+      Chosen over big background triangles with overlaid text: that variant
+      fights the accent-filled active state and larger system fonts.
+- [x] `check-resources.py` now fails if either layout shape regresses.
+- [x] Tests 560 assertions, 0 failed; resource check and full app Java
+      compilation passed; versionCode 9; `AudiobooksMinimalPlayer-1.7.0.apk`
+      built, aligned and signed (v2 + v3).
+- [ ] Confirm on a device: long names and resume lines fully visible in both
+      modes, no half row at the bottom in discrete mode, and the speed label
+      intact with the system font set to large.
+
 ## v1.6.0 — built, needs a device check
 
 - [x] All-files folder names are delimiters before contiguous folder groups,
@@ -130,7 +153,7 @@
 
 ## Next: on-device QA (needs a phone or emulator; none in this sandbox)
 
-1. Install `artifacts/AudiobooksMinimalPlayer-1.6.0.apk` on **Android 7** (the
+1. Install `artifacts/AudiobooksMinimalPlayer-1.7.0.apk` on **Android 7** (the
    minimum) and on **Android 13/14**, then walk through:
    - first launch → permission card → grant → scan;
    - decline the permission and use the app folder;
@@ -155,6 +178,8 @@
    - enable discrete file-list scrolling: check that only complete rows are
      shown, each swipe snaps without a fling, swiping down at the top brings in
      the preceding track, and next-track playback puts the playing track at top;
+     repeat with the system font size set to large: names / resume lines stay
+     readable and the fast-speed label is not truncated;
      also verify row delete taps and horizontal page swipes still work;
    - in Folders, confirm the chevron is gone, the separate trash target opens a
      confirmation for the folder and its contents, cancel leaves it untouched,
