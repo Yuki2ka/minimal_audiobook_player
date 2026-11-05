@@ -35,7 +35,7 @@
     <string name="settings_project_link">%1$s \u00B7 GitHub project \u2192</string>
     <string name="project_url" translatable="false">https://github.com/Yuki2ka/minimal_audiobook_player</string>
     <string name="project_open_failed">No browser installed to open the project page.</string>
-    <string name="settings_files_count">%1$d audio files in the library</string>
+    <string name="settings_files_count">%1$d audio files</string>
     <string name="files_count_unknown">Library not scanned yet</string>
 
     <!-- Library / list -->
