@@ -27,6 +27,7 @@ public final class Prefs {
     private static final String KEY_LAST_FOLDER = "last_folder";
     private static final String KEY_LAST_PAGE = "last_page";
     private static final String KEY_ROOT_HISTORY = "root_history";
+    private static final String KEY_FAST_SPEED = "fast_speed_tenths";
 
     /** How many previously chosen folders are offered in Settings. */
     private static final int MAX_HISTORY = 6;
@@ -37,6 +38,10 @@ public final class Prefs {
     public static final int DEFAULT_SEEK_STEP = 10;
     public static final int MIN_SEEK_STEP = 1;
     public static final int MAX_SEEK_STEP = 60;
+
+    public static final int DEFAULT_FAST_SPEED_TENTHS = 13;
+    public static final int MIN_FAST_SPEED_TENTHS = 11;
+    public static final int MAX_FAST_SPEED_TENTHS = 20;
 
     private final SharedPreferences prefs;
 
@@ -142,6 +147,32 @@ public final class Prefs {
 
     public void setKeepScreenOn(boolean value) {
         prefs.edit().putBoolean(KEY_KEEP_AWAKE, value).apply();
+    }
+
+    public int fastSpeedTenths() {
+        int value = prefs.getInt(KEY_FAST_SPEED, DEFAULT_FAST_SPEED_TENTHS);
+        if (value < MIN_FAST_SPEED_TENTHS) {
+            value = MIN_FAST_SPEED_TENTHS;
+        }
+        if (value > MAX_FAST_SPEED_TENTHS) {
+            value = MAX_FAST_SPEED_TENTHS;
+        }
+        return value;
+    }
+
+    public void setFastSpeedTenths(int tenths) {
+        int clamped = tenths;
+        if (clamped < MIN_FAST_SPEED_TENTHS) {
+            clamped = MIN_FAST_SPEED_TENTHS;
+        }
+        if (clamped > MAX_FAST_SPEED_TENTHS) {
+            clamped = MAX_FAST_SPEED_TENTHS;
+        }
+        prefs.edit().putInt(KEY_FAST_SPEED, clamped).apply();
+    }
+
+    public float fastSpeed() {
+        return fastSpeedTenths() / 10f;
     }
 
     public String lastFile() {

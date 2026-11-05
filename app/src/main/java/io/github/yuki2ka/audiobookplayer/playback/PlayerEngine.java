@@ -7,6 +7,7 @@ import android.content.IntentFilter;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.PlaybackParams;
 import android.os.PowerManager;
 
 import java.io.IOException;
@@ -55,6 +56,7 @@ public final class PlayerEngine {
     private boolean playWhenPrepared;
     private boolean pausedForFocus;
     private boolean ducked;
+    private float playbackSpeed = 1.0f;
 
     private final AudioManager.OnAudioFocusChangeListener focusListener =
             new AudioManager.OnAudioFocusChangeListener() {
@@ -194,6 +196,7 @@ public final class PlayerEngine {
         this.state = PREPARING;
         this.ducked = false;
         this.pausedForFocus = false;
+        this.playbackSpeed = 1.0f;
 
         final MediaPlayer created = new MediaPlayer();
         player = created;
@@ -212,10 +215,11 @@ public final class PlayerEngine {
                     }
                     state = READY;
                     durationMs = Math.max(0, mp.getDuration());
-                    if (startMs > 0 && startMs < durationMs) {
-                        mp.seekTo(startMs);
-                    }
-                    if (playWhenPrepared) {
+                     if (startMs > 0 && startMs < durationMs) {
+                         mp.seekTo(startMs);
+                     }
+                     applyPlaybackSpeed();
+                     if (playWhenPrepared) {
                         playWhenPrepared = false;
                         play();
                     } else {
@@ -309,6 +313,37 @@ public final class PlayerEngine {
             pause();
         } else {
             play();
+        }
+    }
+
+    public float playbackSpeed() {
+        return playbackSpeed;
+    }
+
+    public void setPlaybackSpeed(float speed) {
+        if (speed <= 0f) {
+            speed = 1.0f;
+        }
+        playbackSpeed = speed;
+        applyPlaybackSpeed();
+    }
+
+    private void applyPlaybackSpeed() {
+        if (player == null) {
+            return;
+        }
+        if (state == IDLE || state == PREPARING || state == ERROR) {
+            return;
+        }
+        try {
+            PlaybackParams params = player.getPlaybackParams();
+            if (params == null) {
+                params = new PlaybackParams();
+            }
+            params.setSpeed(playbackSpeed);
+            player.setPlaybackParams(params);
+        } catch (IllegalStateException | UnsupportedOperationException ignored) {
+            // Some devices/decoders reject speed changes; leave default.
         }
     }
 

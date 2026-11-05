@@ -98,6 +98,7 @@ public final class MainActivity extends Activity implements
     private Button btnForward;
     private Button btnPrev;
     private ImageButton btnPlay;
+    private ImageButton btnFastPlay;
     private Button btnNext;
 
     private FrameLayout permissionOverlay;
@@ -111,6 +112,7 @@ public final class MainActivity extends Activity implements
     private LinearLayout settingsHistory;
     private TextView settingsHistoryLabel;
     private TextView settingsSeekValue;
+    private TextView settingsSpeedValue;
     private TextView settingsAccessStatus;
     private TextView settingsAccessHint;
     private TextView settingsLibraryInfo;
@@ -118,6 +120,7 @@ public final class MainActivity extends Activity implements
     private TextView settingsAbout;
     private Button settingsGrant;
     private SeekBar settingsSeekBar;
+    private SeekBar settingsSpeedBar;
     private Switch settingsDeleteSwitch;
     private Switch settingsKeepAwakeSwitch;
     private Switch settingsVolumeKeysSwitch;
@@ -137,6 +140,9 @@ public final class MainActivity extends Activity implements
     private boolean bindingSettings;
     private int saveTicks;
     private String positionLabel;
+...
+    private float currentSpeed = 1.0f;
+    private float pendingSpeed = -1f;
     private String totalLabel;
     private String remainingLabel;
     private String historySignature;
@@ -335,6 +341,7 @@ public final class MainActivity extends Activity implements
         btnForward = findViewById(R.id.btn_forward);
         btnPrev = findViewById(R.id.btn_prev);
         btnPlay = findViewById(R.id.btn_play);
+        btnFastPlay = findViewById(R.id.btn_fast_play);
         btnNext = findViewById(R.id.btn_next);
 
         permissionOverlay = findViewById(R.id.permission_overlay);
@@ -348,6 +355,7 @@ public final class MainActivity extends Activity implements
         settingsHistory = findViewById(R.id.settings_history);
         settingsHistoryLabel = findViewById(R.id.settings_history_label);
         settingsSeekValue = findViewById(R.id.settings_seek_value);
+        settingsSpeedValue = findViewById(R.id.settings_speed_value);
         settingsAccessStatus = findViewById(R.id.settings_access_status);
         settingsAccessHint = findViewById(R.id.settings_access_hint);
         settingsLibraryInfo = findViewById(R.id.settings_library_info);
@@ -355,6 +363,7 @@ public final class MainActivity extends Activity implements
         settingsAbout = findViewById(R.id.settings_about_text);
         settingsGrant = findViewById(R.id.settings_grant);
         settingsSeekBar = findViewById(R.id.settings_seek_bar);
+        settingsSpeedBar = findViewById(R.id.settings_speed_bar);
         settingsDeleteSwitch = findViewById(R.id.settings_delete_switch);
         settingsKeepAwakeSwitch = findViewById(R.id.settings_keep_awake_switch);
         settingsVolumeKeysSwitch = findViewById(R.id.settings_volume_keys_switch);
@@ -424,7 +433,13 @@ public final class MainActivity extends Activity implements
         btnPlay.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                onPlayPause();
+                onPlayControl(false);
+            }
+        });
+        btnFastPlay.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onPlayControl(true);
             }
         });
         btnPrev.setOnClickListener(new View.OnClickListener() {
@@ -535,15 +550,25 @@ public final class MainActivity extends Activity implements
         btnForward.setContentDescription(getString(R.string.seek_forward, step));
     }
 
-    private void onPlayPause() {
+    private void onPlayControl(boolean fast) {
+        float target = fast ? prefs.fastSpeed() : 1.0f;
         if (current == null) {
             startFirst();
+            pendingSpeed = target;
+            currentSpeed = target;
             return;
         }
-        if (engine.isPlaying()) {
+        if (!engine.isPlaying()) {
+            pendingSpeed = target;
+            currentSpeed = target;
+            engine.setPlaybackSpeed(target);
+            engine.play();
+        } else if (Math.abs(currentSpeed - target) < 0.001f) {
             engine.pause();
         } else {
-            engine.play();
+            currentSpeed = target;
+            engine.setPlaybackSpeed(target);
+            updatePlayPauseButton();
         }
     }
 
@@ -613,7 +638,7 @@ public final class MainActivity extends Activity implements
     private void updatePlayPauseButton() {
         boolean playing = engine.isPlaying();
         // The icon is a state-list drawable: selected shows the pause glyph.
-        btnPlay.setSelected(playing);
+        btnPlay.setSelected(playing && Math.abs(currentSpeed - 1.0f) < 0.001f);
         btnPlay.setContentDescription(getString(playing ? R.string.pause : R.string.play));
     }
 
@@ -630,6 +655,7 @@ public final class MainActivity extends Activity implements
         setControlEnabled(padBack, preparedTrack);
         setControlEnabled(padForward, preparedTrack);
         setControlEnabled(btnPlay, hasTrack || hasFiles);
+        setControlEnabled(btnFastPlay, hasTrack || hasFiles);
         setControlEnabled(btnPrev, hasTrack || hasFiles);
         setControlEnabled(btnNext, hasTrack || hasFiles);
     }
@@ -702,6 +728,8 @@ public final class MainActivity extends Activity implements
         prepared = false;
         durationMs = 0;
         saveTicks = 0;
+        currentSpeed = 1.0f;
+        pendingSpeed = -1f;
         seekBar.setMax(1);
         seekBar.setProgress(0);
         updateTimeLabels(0, 0);
@@ -1156,6 +1184,23 @@ public final class MainActivity extends Activity implements
                 updateStepLabels();
             }
         });
+        settingsSpeedBar.setMax(Prefs.MAX_FAST_SPEED_TENTHS - Prefs.MIN_FAST_SPEED_TENTHS);
+        settingsSpeedBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
+                float value = (progress + Prefs.MIN_FAST_SPEED_TENTHS) / 10f;
+                settingsSpeedValue.setText(String.format(java.util.Locale.US, "x%.1f", value));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar bar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar bar) {
+                prefs.setFastSpeedTenths(bar.getProgress() + Prefs.MIN_FAST_SPEED_TENTHS);
+            }
+        });
         settingsDeleteSwitch.setOnCheckedChangeListener(
                 new android.widget.CompoundButton.OnCheckedChangeListener() {
                     @Override
@@ -1300,6 +1345,8 @@ public final class MainActivity extends Activity implements
         int step = prefs.seekStep();
         settingsSeekBar.setProgress(step - Prefs.MIN_SEEK_STEP);
         settingsSeekValue.setText(getString(R.string.settings_seek_value, step));
+        settingsSpeedBar.setProgress(prefs.fastSpeedTenths() - Prefs.MIN_FAST_SPEED_TENTHS);
+        settingsSpeedValue.setText(String.format(java.util.Locale.US, "x%.1f", prefs.fastSpeed()));
         settingsDeleteSwitch.setChecked(prefs.deleteWithoutConfirm());
         settingsKeepAwakeSwitch.setChecked(prefs.keepScreenOn());
         settingsVolumeKeysSwitch.setChecked(prefs.volumeKeysSeek());
@@ -1541,6 +1588,14 @@ public final class MainActivity extends Activity implements
         if (prepared) {
             seekBar.setMax(durationMs);
         }
+        if (pendingSpeed >= 0f) {
+            currentSpeed = pendingSpeed;
+            engine.setPlaybackSpeed(currentSpeed);
+            pendingSpeed = -1f;
+        } else {
+            engine.setPlaybackSpeed(currentSpeed);
+        }
+        updatePlayPauseButton();
         updateProgressFromEngine();
         updateControls();
         updatePlayPauseButton();

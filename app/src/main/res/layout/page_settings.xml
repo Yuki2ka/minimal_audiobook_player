@@ -206,7 +206,56 @@
                 android:text="@string/settings_seek_hint" />
         </LinearLayout>
 
-        <!-- 4. Toggles -->
+        <!-- 4. Fast playback speed -->
+        <LinearLayout style="@style/SettingCard">
+
+            <TextView
+                style="@style/SettingTitle"
+                android:text="@string/settings_playback_speed" />
+
+            <TextView
+                android:id="@+id/settings_speed_value"
+                style="@style/SettingValue"
+                android:textSize="20sp" />
+
+            <SeekBar
+                android:id="@+id/settings_speed_bar"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/seek_height"
+                android:layout_marginTop="6dp"
+                android:max="9"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:progressDrawable="@drawable/seek_progress"
+                android:splitTrack="false"
+                android:thumb="@drawable/seek_thumb" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    style="@style/PlayerTime"
+                    android:text="1.1x" />
+
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <TextView
+                    style="@style/PlayerTime"
+                    android:text="2.0x" />
+            </LinearLayout>
+
+            <TextView
+                style="@style/SettingSummary"
+                android:layout_marginTop="6dp"
+                android:text="@string/settings_playback_speed_hint" />
+        </LinearLayout>
+
+        <!-- 5. Toggles -->
         <LinearLayout style="@style/SettingCard">
 
             <LinearLayout
