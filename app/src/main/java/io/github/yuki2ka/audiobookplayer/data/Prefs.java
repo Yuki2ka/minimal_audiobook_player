@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import io.github.yuki2ka.audiobookplayer.util.PlaybackSpeed;
 import io.github.yuki2ka.audiobookplayer.util.TimeFormat;
 
 /**
@@ -27,6 +28,7 @@ public final class Prefs {
     private static final String KEY_LAST_FOLDER = "last_folder";
     private static final String KEY_LAST_PAGE = "last_page";
     private static final String KEY_ROOT_HISTORY = "root_history";
+    private static final String KEY_FAST_SPEED = "fast_speed_percent";
 
     /** How many previously chosen folders are offered in Settings. */
     private static final int MAX_HISTORY = 6;
@@ -37,6 +39,11 @@ public final class Prefs {
     public static final int DEFAULT_SEEK_STEP = 10;
     public static final int MIN_SEEK_STEP = 1;
     public static final int MAX_SEEK_STEP = 60;
+
+    /** Speed of the fast play button, in percent (x1.1 … x2.0, default x1.3). */
+    public static final int DEFAULT_FAST_SPEED = PlaybackSpeed.DEFAULT_FAST_PERCENT;
+    public static final int MIN_FAST_SPEED = PlaybackSpeed.MIN_FAST_PERCENT;
+    public static final int MAX_FAST_SPEED = PlaybackSpeed.MAX_FAST_PERCENT;
 
     private final SharedPreferences prefs;
 
@@ -142,6 +149,24 @@ public final class Prefs {
 
     public void setKeepScreenOn(boolean value) {
         prefs.edit().putBoolean(KEY_KEEP_AWAKE, value).apply();
+    }
+
+    /**
+     * Speed of the fast play button in percent (100 = x1.0), always on the
+     * x0.1 grid and inside x1.1 … x2.0, so a stale stored value can never
+     * produce a silly speed.
+     */
+    public int fastSpeedPercent() {
+        return PlaybackSpeed.snap(prefs.getInt(KEY_FAST_SPEED, DEFAULT_FAST_SPEED));
+    }
+
+    public void setFastSpeedPercent(int percent) {
+        prefs.edit().putInt(KEY_FAST_SPEED, PlaybackSpeed.snap(percent)).apply();
+    }
+
+    /** Slider position (0-based) of the configured fast speed. */
+    public int fastSpeedStep() {
+        return PlaybackSpeed.toStep(fastSpeedPercent());
     }
 
     public String lastFile() {

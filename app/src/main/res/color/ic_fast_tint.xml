@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tint for the fast play glyph: accent on the dark outlined button, dark ink
+     on the filled (selected) button. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="@color/accent_ink" android:state_selected="true" />
+    <item android:color="@color/accent" />
+</selector>

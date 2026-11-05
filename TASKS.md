@@ -3,6 +3,22 @@
 > Updated as work progresses. See [PROGRESS.md](PROGRESS.md) for milestones and
 > verified build/test results.
 
+## v1.4.0 — done, needs a device check
+
+- [x] **Fast play button** right of the play button: double-triangle glyph, the
+      chosen speed shown underneath. Press rules are identical for both buttons:
+      paused → play at that button's speed; same button while playing → pause;
+      other button while playing → switch speed, keep playing. The active
+      button shows the pause glyph.
+- [x] **Settings → Fast play speed**: slider x1.1 … x2.0 in x0.1 steps, default
+      **x1.3**. The speed is kept for the next chapter and applied through
+      `setPlaybackParams()` only while playing.
+- [x] Tests 519 assertions, 0 failed; versionCode 6;
+      `AudiobooksMinimalPlayer-1.4.0.apk` built and signed.
+- [ ] **Confirm on the Android 7 phone**: fast button starts at x1.3, pressing it
+      again pauses, pressing plain play switches to x1 without a gap, and the
+      speed survives "next chapter".
+
 ## v1.3.0 — done, needs a device check
 
 - [x] **Held volume key moves the volume twice as fast** (two stream steps per
@@ -75,7 +91,7 @@
 
 ## Next: on-device QA (needs a phone or emulator; none in this sandbox)
 
-1. Install `artifacts/AudiobooksMinimalPlayer-1.3.0.apk` on **Android 7** (the
+1. Install `artifacts/AudiobooksMinimalPlayer-1.4.0.apk` on **Android 7** (the
    minimum) and on **Android 13/14**, then walk through:
    - first launch → permission card → grant → scan;
    - decline the permission and use the app folder;
@@ -94,6 +110,9 @@
      recent-folder list: tap to switch, trash to remove;
    - on both pads: nearest-to-button is the smallest seek, outer edge the
      largest, and the back pad moves backwards;
+   - press fast play while paused (starts at x1.3, no immediate pause), press it
+     again (pauses), press plain play while playing (switches to x1, keeps
+     playing), and change the speed in Settings while listening;
    - enable "Volume keys seek (screen off)", start playback, turn the screen off:
      short press should seek by the configured step, a long press should change
      the volume, and with the screen on the keys must behave normally.

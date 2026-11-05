@@ -18,6 +18,7 @@ import io.github.yuki2ka.audiobookplayer.scan.Scanner;
 import io.github.yuki2ka.audiobookplayer.util.Fingerprint;
 import io.github.yuki2ka.audiobookplayer.util.SeekCurve;
 import io.github.yuki2ka.audiobookplayer.util.NaturalSort;
+import io.github.yuki2ka.audiobookplayer.util.PlaybackSpeed;
 import io.github.yuki2ka.audiobookplayer.util.TimeFormat;
 import io.github.yuki2ka.audiobookplayer.util.VolumeGesture;
 
@@ -36,6 +37,7 @@ public final class LogicTests {
         testSeekCurve();
         testVolumeGesture();
         testSeekZoneMapping();
+        testPlaybackSpeed();
         testNaturalSortBasics();
         testNaturalSortUnicode();
         testDisplayName();
@@ -269,6 +271,81 @@ public final class LogicTests {
     }
 
     /** The seek band maps a tap above the slider to the same spot on it. */
+    private static void testPlaybackSpeed() {
+        // Labels: what the button and the settings show.
+        eq("label(100)", "x1", PlaybackSpeed.label(100));
+        eq("label(110)", "x1.1", PlaybackSpeed.label(110));
+        eq("label(130)", "x1.3", PlaybackSpeed.label(130));
+        eq("label(200)", "x2", PlaybackSpeed.label(200));
+        eq("label(125)", "x1.25", PlaybackSpeed.label(125));
+        eq("label(float 1.3)", "x1.3", PlaybackSpeed.label(1.3f));
+        eq("label(float 1.2999999)", "x1.3", PlaybackSpeed.label(1.2999999f));
+        eq("label(-5) clamps", "x0", PlaybackSpeed.label(-5));
+
+        // Percent <-> float round trips must be exact for every slider step.
+        for (int percent = 100; percent <= 200; percent += 10) {
+            eq("toPercent(toFloat(" + percent + "))", percent,
+                    PlaybackSpeed.toPercent(PlaybackSpeed.toFloat(percent)));
+        }
+        eq("NORMAL_PERCENT is x1", "x1", PlaybackSpeed.label(PlaybackSpeed.NORMAL_PERCENT));
+        check("100 is not fast", !PlaybackSpeed.isFast(100));
+        check("110 is fast", PlaybackSpeed.isFast(110));
+
+        // Press logic: paused → play, same button → pause, other → switch.
+        eq("paused + normal button", PlaybackSpeed.ACTION_PLAY,
+                PlaybackSpeed.actionFor(false, 100, 100));
+        eq("paused + fast button", PlaybackSpeed.ACTION_PLAY,
+                PlaybackSpeed.actionFor(false, 100, 130));
+        eq("paused at fast speed + fast button", PlaybackSpeed.ACTION_PLAY,
+                PlaybackSpeed.actionFor(false, 130, 130));
+        eq("playing x1 + normal button", PlaybackSpeed.ACTION_PAUSE,
+                PlaybackSpeed.actionFor(true, 100, 100));
+        eq("playing x1.3 + fast button", PlaybackSpeed.ACTION_PAUSE,
+                PlaybackSpeed.actionFor(true, 130, 130));
+        eq("playing x1.3 + normal button", PlaybackSpeed.ACTION_SWITCH,
+                PlaybackSpeed.actionFor(true, 130, 100));
+        eq("playing x1 + fast button", PlaybackSpeed.ACTION_SWITCH,
+                PlaybackSpeed.actionFor(true, 100, 130));
+        // Same button twice: play, pause, play, pause (never a double action).
+        boolean playing = false;
+        int speed = 100;
+        for (int i = 0; i < 6; i++) {
+            int action = PlaybackSpeed.actionFor(playing, speed, 130);
+            if (action == PlaybackSpeed.ACTION_PAUSE) {
+                playing = false;
+            } else {
+                playing = true;
+                speed = 130;
+            }
+            eq("toggle " + i + " playing", i % 2 == 0, playing);
+        }
+
+        // Settings slider grid: 1.1 … 2.0 in 0.1 steps.
+        eq("min speed", 110, PlaybackSpeed.MIN_FAST_PERCENT);
+        eq("max speed", 200, PlaybackSpeed.MAX_FAST_PERCENT);
+        eq("default speed", 130, PlaybackSpeed.DEFAULT_FAST_PERCENT);
+        eq("step count", 9, PlaybackSpeed.FAST_STEP_COUNT);
+        eq("step 0", 110, PlaybackSpeed.fromStep(0));
+        eq("step 2 (default)", 130, PlaybackSpeed.fromStep(2));
+        eq("step 9", 200, PlaybackSpeed.fromStep(9));
+        eq("step below 0 clamps", 110, PlaybackSpeed.fromStep(-4));
+        eq("step above 9 clamps", 200, PlaybackSpeed.fromStep(42));
+        // Every step is reachable in both directions, and non-grid values snap.
+        for (int step = 0; step <= PlaybackSpeed.FAST_STEP_COUNT; step++) {
+            int percent = PlaybackSpeed.fromStep(step);
+            eq("round trip step " + step, step, PlaybackSpeed.toStep(percent));
+            eq("label of step " + step, "x1.1".equals(PlaybackSpeed.label(percent)) || step > 0,
+                    true);
+        }
+        eq("snap 134 -> 130", 130, PlaybackSpeed.snap(134));
+        eq("snap 135 -> 140", 140, PlaybackSpeed.snap(135));
+        eq("snap 300 clamps to max", 200, PlaybackSpeed.snap(300));
+        eq("snap 5 clamps to min", 110, PlaybackSpeed.snap(5));
+        eq("toStep(100) clamps to 0", 0, PlaybackSpeed.toStep(100));
+        eq("default label", "x1.3", PlaybackSpeed.label(PlaybackSpeed.DEFAULT_FAST_PERCENT));
+        eq("default slider position", 2, PlaybackSpeed.toStep(PlaybackSpeed.DEFAULT_FAST_PERCENT));
+    }
+
     private static void testSeekZoneMapping() {
         float width = 1000f;
         float start = 14f;

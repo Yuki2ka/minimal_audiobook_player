@@ -11,7 +11,11 @@
     <string name="prev_file">Previous file</string>
     <string name="next_file">Next file</string>
     <string name="play">Play</string>
+    <string name="play_fast">Play fast</string>
+    <string name="play_fast_at">Play at %1$s</string>
     <string name="pause">Pause</string>
+    <string name="speed_normal">x1</string>
+    <string name="speed_unsupported">This file cannot be played faster on this device</string>
     <string name="seek_back">Back %1$d seconds</string>
     <string name="seek_forward">Forward %1$d seconds</string>
     <string name="seek_back_label">\u2212 %1$d s</string>
@@ -83,6 +87,10 @@
     <string name="settings_seek">Seek step</string>
     <string name="settings_seek_value">%1$d s</string>
     <string name="settings_seek_hint">Step of the \u2212 / + buttons (long-press them for 60 s). The pads beside the play button seek 2\u201360 s depending on how far from the middle you tap.</string>
+    <string name="speed_min">x1.1</string>
+    <string name="speed_max">x2</string>
+    <string name="settings_speed">Fast play speed</string>
+    <string name="settings_speed_hint">The button with the double triangle plays at this speed; the plain play button always plays at x1. Pressing the other button while playing switches the speed without stopping.</string>
     <string name="settings_delete_no_confirm">Delete without confirmation</string>
     <string name="settings_delete_no_confirm_hint">The trash button removes files immediately. There is no undo.</string>
     <string name="settings_keep_awake">Keep screen on while playing</string>

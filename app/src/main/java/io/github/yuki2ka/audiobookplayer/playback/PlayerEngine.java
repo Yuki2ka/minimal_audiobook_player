@@ -7,6 +7,8 @@ import android.content.IntentFilter;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.PlaybackParams;
+import android.os.Build;
 import android.os.PowerManager;
 
 import java.io.IOException;
@@ -55,6 +57,9 @@ public final class PlayerEngine {
     private boolean playWhenPrepared;
     private boolean pausedForFocus;
     private boolean ducked;
+    /** Requested speed, in percent of normal speed (100 = x1.0). */
+    private int speedPercent = 100;
+    private boolean speedUnsupported;
 
     private final AudioManager.OnAudioFocusChangeListener focusListener =
             new AudioManager.OnAudioFocusChangeListener() {
@@ -146,6 +151,54 @@ public final class PlayerEngine {
 
     public void setListener(Listener listener) {
         this.listener = listener;
+    }
+
+    /**
+     * Speed in percent (100 = x1.0). Latching the value here rather than
+     * rejecting it before {@code open()} means a track change keeps the speed:
+     * the new player applies it as soon as it is prepared.
+     */
+    public void setSpeedPercent(int percent) {
+        int clamped = percent < 10 ? 10 : (percent > 400 ? 400 : percent);
+        speedPercent = clamped;
+        applySpeed();
+    }
+
+    public int speedPercent() {
+        return speedPercent;
+    }
+
+    /** {@code true} when the platform refused the last speed change. */
+    public boolean speedUnsupported() {
+        return speedUnsupported;
+    }
+
+    /**
+     * Most framework {@code MediaPlayer} decoders accept x0.5…x2.0. Anything the
+     * platform rejects is ignored (playback stays at normal speed) instead of
+     * interrupting the book.
+     */
+    private void applySpeed() {
+        // Only while playing. setPlaybackParams() on a prepared, paused player
+        // implicitly *starts* playback on several Android versions, which would
+        // turn "press fast play while paused" into an instant play.
+        if (player == null || state != PLAYING) {
+            return;
+        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            // setPlaybackParams() exists from API 23 (6.0); minSdk is 24, so this
+            // is only a safeguard against odd vendor builds.
+            speedUnsupported = speedPercent != 100;
+            return;
+        }
+        try {
+            PlaybackParams params = player.getPlaybackParams();
+            params.setSpeed(speedPercent / 100f);
+            player.setPlaybackParams(params);
+            speedUnsupported = false;
+        } catch (IllegalStateException | IllegalArgumentException | UnsupportedOperationException e) {
+            speedUnsupported = speedPercent != 100;
+        }
     }
 
     public boolean hasTrack() {
@@ -288,6 +341,9 @@ public final class PlayerEngine {
         try {
             player.start();
             state = PLAYING;
+            // Now that playback runs, the latched speed can be applied safely
+            // (see applySpeed()); a new track therefore keeps the chosen rate.
+            applySpeed();
             volumeKeys.setPlaying(true);
             notifyState(true);
         } catch (IllegalStateException ignored) {
@@ -365,6 +421,8 @@ public final class PlayerEngine {
         path = null;
         ducked = false;
         pausedForFocus = false;
+        speedPercent = 100;
+        speedUnsupported = false;
         volumeKeys.setPlaying(false);
         abandonFocus();
     }

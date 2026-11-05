@@ -5,7 +5,7 @@ Next-step pointer lives in [TASKS.md](TASKS.md).
 
 Project: **Minimal Audiobook Player** — a dependency-free Android audiobook player
 (minSdk 24 / Android 7.0, targetSdk 34), package `io.github.yuki2ka.audiobookplayer`,
-version 1.3.0.
+version 1.4.0.
 
 ## Milestones
 
@@ -30,15 +30,16 @@ version 1.3.0.
 | 16 | Pad geometry fix (mirrored back pad) + volume-key seeking (opt-in) | ✅ |
 | 17 | Volume-key regression fix (1.2.1): session callback + release-driven gestures | ✅ |
 | 18 | 1.3.0: 2x volume ramp, landscape tabs on the right, seek band, new APK name, project link | ✅ |
+| 19 | 1.4.0: fast play button + speed setting (x1.1–x2.0, default x1.3) | ✅ |
 
 ## Verification (last run)
 
 | Check | Result |
 |-------|--------|
-| `tools/run-tests.sh` | **448 assertions, 0 failed** (locale forced to UTF-8) |
-| `tools/check-resources.py` | 80 ids, 10 layouts, 111 strings, 28 drawables — all references resolve |
-| `tools/build-apk.sh` | `artifacts/AudiobooksMinimalPlayer-1.3.0.apk`, **196 KB** |
-| Manifest / badging | package correct, versionCode 5, versionName 1.3.0, **sdkVersion 24**, target 34, launcher `MainActivity` |
+| `tools/run-tests.sh` | **519 assertions, 0 failed** (locale forced to UTF-8) |
+| `tools/check-resources.py` | 84 ids, 10 layouts, 119 strings, 30 drawables — all references resolve |
+| `tools/build-apk.sh` | `artifacts/AudiobooksMinimalPlayer-1.4.0.apk`, **208 KB** |
+| Manifest / badging | package correct, versionCode 6, versionName 1.4.0, **sdkVersion 24**, target 34, launcher `MainActivity` |
 | DEX | dex 037, 116,752 B; no AndroidX, no Kotlin, no `java.time` / `java.nio.file` / streams / `Optional` references (API 24 safe) |
 | Signature | `apksigner verify`: v2 + v3 true, `CN=Android Debug` (RSA-2048) |
 | Alignment | `zipalign -c -v -p 4`: successful |
@@ -80,6 +81,14 @@ JAVA_HOME=/tmp/toolchain/jdk-17.0.20.1+1 ANDROID_HOME=/tmp/sdk ./tools/build-apk
 - **Root folder** is chosen by the user; nothing outside it is scanned. Plain file paths are
   used directly (fast, low memory) with an explicit permission strategy per Android version
   (runtime read/write ≤ Android 10, "all files access" on 11+, audio-only read as fallback).
+- **Playback speed** (`util/PlaybackSpeed`, pure Java): speeds are integer percent
+  (x1.3 = 130) so the "is this button's speed active?" test is exact instead of a float
+  comparison, and the settings slider maps 0…9 → x1.1…x2.0 without rounding holes.
+  The press rules (pause / play / switch) live in `PlaybackSpeed.actionFor()` and are
+  unit-tested. `PlayerEngine` latches the requested speed and applies it **only while
+  playing**: `setPlaybackParams()` on a prepared-but-paused player implicitly starts
+  playback on several Android versions, which would have turned "press fast play while
+  paused" into an immediate play. A rejected speed falls back to x1 with a toast.
 - **Rotation semantics**: rotate the *whole* list when a row is tapped (`c d a b` for a tap
   on `c` out of `a b c d`), move the finished file to the bottom on completion. Rotating only
   a prefix was a bug; do not reintroduce it.

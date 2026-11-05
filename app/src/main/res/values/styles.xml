@@ -170,6 +170,15 @@
         <item name="android:stateListAnimator">@null</item>
     </style>
 
+    <!-- Fast play: outlined when idle, filled accent while the fast speed is
+         the one playing (see drawable/bg_button_fast.xml). -->
+    <style name="FastIconButton" parent="@android:style/Widget.Material.ImageButton">
+        <item name="android:background">@drawable/bg_button_fast</item>
+        <item name="android:padding">12dp</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
     <!-- Music / Books / Downloads / SD card quick picks. -->
     <style name="QuickFolderButton" parent="ActionButton">
         <item name="android:layout_height">@dimen/step_height</item>

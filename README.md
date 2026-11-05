@@ -12,11 +12,11 @@ for imprecise fingers on small, old phones.
 ## Install the test build
 
 ```
-artifacts/AudiobooksMinimalPlayer-1.3.0.apk
+artifacts/AudiobooksMinimalPlayer-1.4.0.apk
 ```
 
 ```bash
-adb install -r artifacts/AudiobooksMinimalPlayer-1.3.0.apk
+adb install -r artifacts/AudiobooksMinimalPlayer-1.4.0.apk
 ```
 
 Or copy the APK to the phone and open it (Android will ask to allow installing
@@ -54,7 +54,8 @@ tabs stay next to the controls.
 2:00            10:00            -8:00      played · total · remaining
 ───●──────────────────────────────          seek bar, tap to jump
 
-[ 2–60 s ▶]        ( ▶ )        [◀ 2–60 s]  proportional seek pads · play
+[ 2–60 s ▶]     ( ▶ )  [▶▶]      [◀ 2–60 s]  seek pads · play · fast play
+                         x1.3                (fast play: chosen speed)
 [prev]  [- 10 s]  [+ 10 s]  [next]
 ```
 
@@ -63,6 +64,16 @@ tabs stay next to the controls.
   (the left one is mirrored). The pad shows the amount live and resets to
   "2–60 s" when released.
 * **Play/Pause** is icon-only and centred between the two pads.
+* **Fast play** sits right of the play button (double triangle, the chosen speed
+  underneath, default **x1.3**). The rules are the same for both buttons:
+  * paused → the press starts playback **at that button's speed** (x1 for the
+    plain button, the speed from Settings for the fast one);
+  * playing at that speed → the press **pauses** (second press of the same
+    button);
+  * playing at the other speed → the press **switches the speed** and keeps
+    playing.
+  The button whose speed is active shows the pause glyph, so it is always clear
+  which button will pause. The speed stays for the next chapter as well.
 * **The whole seek band is the slider.** The time labels above the bar are not
   dead space: a tap anywhere in that band lands on the same position as a tap on
   the bar below it, so the target is 90 dp tall without adding any height. A

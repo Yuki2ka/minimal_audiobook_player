@@ -38,6 +38,7 @@ import io.github.yuki2ka.audiobookplayer.ui.SeekPad;
 import io.github.yuki2ka.audiobookplayer.ui.SeekZone;
 import io.github.yuki2ka.audiobookplayer.ui.SwipePager;
 import io.github.yuki2ka.audiobookplayer.util.Fingerprint;
+import io.github.yuki2ka.audiobookplayer.util.PlaybackSpeed;
 import io.github.yuki2ka.audiobookplayer.util.SeekCurve;
 import io.github.yuki2ka.audiobookplayer.util.Storage;
 import io.github.yuki2ka.audiobookplayer.util.TimeFormat;
@@ -98,6 +99,8 @@ public final class MainActivity extends Activity implements
     private Button btnForward;
     private Button btnPrev;
     private ImageButton btnPlay;
+    private ImageButton btnFastPlay;
+    private TextView fastSpeedLabel;
     private Button btnNext;
 
     private FrameLayout permissionOverlay;
@@ -118,6 +121,8 @@ public final class MainActivity extends Activity implements
     private TextView settingsAbout;
     private Button settingsGrant;
     private SeekBar settingsSeekBar;
+    private SeekBar settingsSpeedBar;
+    private TextView settingsSpeedValue;
     private Switch settingsDeleteSwitch;
     private Switch settingsKeepAwakeSwitch;
     private Switch settingsVolumeKeysSwitch;
@@ -127,6 +132,11 @@ public final class MainActivity extends Activity implements
 
     private AudioFile current;
     private int queueMode = Prefs.MODE_UNIFIED;
+    /**
+     * Speed (percent) the next play press uses. Survives track changes, so the
+     * next chapter of a book keeps the speed the user is listening at.
+     */
+    private int playSpeedPercent = PlaybackSpeed.NORMAL_PERCENT;
     private List<AudioFile> folderQueue;
     private int folderIndex;
     private int page = PAGE_ALL;
@@ -335,6 +345,8 @@ public final class MainActivity extends Activity implements
         btnForward = findViewById(R.id.btn_forward);
         btnPrev = findViewById(R.id.btn_prev);
         btnPlay = findViewById(R.id.btn_play);
+        btnFastPlay = findViewById(R.id.btn_fast_play);
+        fastSpeedLabel = findViewById(R.id.fast_speed_label);
         btnNext = findViewById(R.id.btn_next);
 
         permissionOverlay = findViewById(R.id.permission_overlay);
@@ -355,6 +367,8 @@ public final class MainActivity extends Activity implements
         settingsAbout = findViewById(R.id.settings_about_text);
         settingsGrant = findViewById(R.id.settings_grant);
         settingsSeekBar = findViewById(R.id.settings_seek_bar);
+        settingsSpeedBar = findViewById(R.id.settings_speed_bar);
+        settingsSpeedValue = findViewById(R.id.settings_speed_value);
         settingsDeleteSwitch = findViewById(R.id.settings_delete_switch);
         settingsKeepAwakeSwitch = findViewById(R.id.settings_keep_awake_switch);
         settingsVolumeKeysSwitch = findViewById(R.id.settings_volume_keys_switch);
@@ -424,7 +438,13 @@ public final class MainActivity extends Activity implements
         btnPlay.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                onPlayPause();
+                onPlayButton(PlaybackSpeed.NORMAL_PERCENT);
+            }
+        });
+        btnFastPlay.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onPlayButton(prefs.fastSpeedPercent());
             }
         });
         btnPrev.setOnClickListener(new View.OnClickListener() {
@@ -521,6 +541,7 @@ public final class MainActivity extends Activity implements
         });
         updateStepLabels();
         updateTimeLabels(0, 0);
+        updateSpeedLabels();
         updateControls();
     }
 
@@ -535,15 +556,48 @@ public final class MainActivity extends Activity implements
         btnForward.setContentDescription(getString(R.string.seek_forward, step));
     }
 
-    private void onPlayPause() {
+    /**
+     * Both play buttons land here. The speed they request is remembered as
+     * {@link #playSpeedPercent} so a new track, or the next chapter after the
+     * current one ends, keeps playing at the speed the user chose:
+     *
+     * <ul>
+     *   <li>paused (or nothing loaded) → start playing at that speed;</li>
+     *   <li>playing at that speed → pause (second press of the same button);</li>
+     *   <li>playing at the other speed → switch speed, keep playing.</li>
+     * </ul>
+     */
+    private void onPlayButton(int requestedPercent) {
+        int action = PlaybackSpeed.actionFor(
+                engine.isPlaying(), engine.speedPercent(), requestedPercent);
+        if (engine.speedUnsupported() && PlaybackSpeed.isFast(requestedPercent)) {
+            // The decoder refused speed changes: say so instead of silently
+            // playing at normal speed.
+            Toast.makeText(this, R.string.speed_unsupported, Toast.LENGTH_SHORT).show();
+        }
+        if (action != PlaybackSpeed.ACTION_PAUSE) {
+            playSpeedPercent = requestedPercent;
+        }
         if (current == null) {
+            // Nothing loaded yet: remember the speed, then start the first file.
             startFirst();
+            applySpeed();
+            updatePlayButtons();
             return;
         }
-        if (engine.isPlaying()) {
+        if (action == PlaybackSpeed.ACTION_PAUSE) {
             engine.pause();
-        } else {
-            engine.play();
+            return;
+        }
+        applySpeed();
+        engine.play();
+        updatePlayButtons();
+    }
+
+    /** Pushes {@link #playSpeedPercent} into the engine (no-op if unchanged). */
+    private void applySpeed() {
+        if (engine.speedPercent() != playSpeedPercent) {
+            engine.setSpeedPercent(playSpeedPercent);
         }
     }
 
@@ -610,11 +664,39 @@ public final class MainActivity extends Activity implements
         updateTimeLabels(position, durationMs);
     }
 
-    private void updatePlayPauseButton() {
+    /**
+     * Reflects who is playing: the icon of the button whose speed is active
+     * turns into a pause glyph, the other one stays a play glyph, and the fast
+     * button is highlighted while its speed is the one playing.
+     */
+    private void updatePlayButtons() {
         boolean playing = engine.isPlaying();
-        // The icon is a state-list drawable: selected shows the pause glyph.
-        btnPlay.setSelected(playing);
-        btnPlay.setContentDescription(getString(playing ? R.string.pause : R.string.play));
+        int active = engine.speedPercent();
+        boolean normal = active == PlaybackSpeed.NORMAL_PERCENT;
+        boolean fast = !normal;
+        // The icons are state-list drawables: selected shows the pause glyph.
+        btnPlay.setSelected(playing && normal);
+        btnFastPlay.setSelected(playing && fast);
+        btnPlay.setContentDescription(getString(playing && normal ? R.string.pause : R.string.play));
+        btnFastPlay.setContentDescription(getString(playing && fast
+                ? R.string.pause
+                : R.string.play_fast_at, PlaybackSpeed.label(prefs.fastSpeedPercent())));
+        // The speed under the fast button lights up while that speed is the one
+        // playing; the glyph itself is tinted by ic_fast_tint.
+        fastSpeedLabel.setTextColor(getColor(playing && fast
+                ? R.color.accent : R.color.text_secondary));
+    }
+
+    /** Shows the configured fast speed under its button and in Settings. */
+    private void updateSpeedLabels() {
+        String label = PlaybackSpeed.label(prefs.fastSpeedPercent());
+        if (fastSpeedLabel != null) {
+            fastSpeedLabel.setText(label);
+            updatePlayButtons();
+        }
+        if (settingsSpeedValue != null) {
+            settingsSpeedValue.setText(label);
+        }
     }
 
     private void updateControls() {
@@ -630,6 +712,7 @@ public final class MainActivity extends Activity implements
         setControlEnabled(padBack, preparedTrack);
         setControlEnabled(padForward, preparedTrack);
         setControlEnabled(btnPlay, hasTrack || hasFiles);
+        setControlEnabled(btnFastPlay, hasTrack || hasFiles);
         setControlEnabled(btnPrev, hasTrack || hasFiles);
         setControlEnabled(btnNext, hasTrack || hasFiles);
     }
@@ -705,11 +788,14 @@ public final class MainActivity extends Activity implements
         seekBar.setMax(1);
         seekBar.setProgress(0);
         updateTimeLabels(0, 0);
-        updatePlayPauseButton();
         updateControls();
         adapter.setPlayingPath(file.path);
         browser.setPlaying(file.path);
         engine.open(file.path, startAt, true);
+        // After open(): the engine latches the speed and applies it as soon as
+        // playback starts, so a track change keeps the chosen rate.
+        engine.setSpeedPercent(playSpeedPercent);
+        updatePlayButtons();
     }
 
     private void selectFolderFile(AudioFile file) {
@@ -795,7 +881,7 @@ public final class MainActivity extends Activity implements
         } else {
             // End of the queue: keep the track loaded (Play restarts it).
             updateControls();
-            updatePlayPauseButton();
+            updatePlayButtons();
         }
     }
 
@@ -979,7 +1065,7 @@ public final class MainActivity extends Activity implements
         } else {
             browser.refresh();
         }
-        updatePlayPauseButton();
+        updatePlayButtons();
         updateControls();
         updateProgressFromEngine();
         updateEmptyState();
@@ -1120,7 +1206,7 @@ public final class MainActivity extends Activity implements
             updateTimeLabels(0, 0);
             adapter.setPlayingPath(null);
             browser.setPlaying(null);
-            updatePlayPauseButton();
+            updatePlayButtons();
             updateControls();
         }
         if (file.path.equals(prefs.lastFile())) {
@@ -1154,6 +1240,32 @@ public final class MainActivity extends Activity implements
             public void onStopTrackingTouch(SeekBar bar) {
                 prefs.setSeekStep(bar.getProgress() + Prefs.MIN_SEEK_STEP);
                 updateStepLabels();
+            }
+        });
+        settingsSpeedBar.setMax(PlaybackSpeed.FAST_STEP_COUNT);
+        settingsSpeedBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
+                // Live label while dragging; the value is only stored on release.
+                settingsSpeedValue.setText(PlaybackSpeed.label(PlaybackSpeed.fromStep(progress)));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar bar) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar bar) {
+                prefs.setFastSpeedPercent(PlaybackSpeed.fromStep(bar.getProgress()));
+                // The new speed applies to the next press; if the fast speed is
+                // the one playing right now, switch to it immediately.
+                if (engine.isPlaying()
+                        && PlaybackSpeed.isFast(engine.speedPercent())
+                        && engine.speedPercent() != prefs.fastSpeedPercent()) {
+                    playSpeedPercent = prefs.fastSpeedPercent();
+                    applySpeed();
+                }
+                updateSpeedLabels();
             }
         });
         settingsDeleteSwitch.setOnCheckedChangeListener(
@@ -1300,6 +1412,8 @@ public final class MainActivity extends Activity implements
         int step = prefs.seekStep();
         settingsSeekBar.setProgress(step - Prefs.MIN_SEEK_STEP);
         settingsSeekValue.setText(getString(R.string.settings_seek_value, step));
+        settingsSpeedBar.setProgress(prefs.fastSpeedStep());
+        settingsSpeedValue.setText(PlaybackSpeed.label(prefs.fastSpeedPercent()));
         settingsDeleteSwitch.setChecked(prefs.deleteWithoutConfirm());
         settingsKeepAwakeSwitch.setChecked(prefs.keepScreenOn());
         settingsVolumeKeysSwitch.setChecked(prefs.volumeKeysSeek());
@@ -1541,15 +1655,22 @@ public final class MainActivity extends Activity implements
         if (prepared) {
             seekBar.setMax(durationMs);
         }
+        if (engine.speedUnsupported() && engine.speedPercent() != PlaybackSpeed.NORMAL_PERCENT) {
+            // Decoder without speed support: fall back to normal speed and say
+            // why, rather than claiming a speed that is not being used.
+            engine.setSpeedPercent(PlaybackSpeed.NORMAL_PERCENT);
+            playSpeedPercent = PlaybackSpeed.NORMAL_PERCENT;
+            Toast.makeText(this, R.string.speed_unsupported, Toast.LENGTH_SHORT).show();
+        }
         updateProgressFromEngine();
         updateControls();
-        updatePlayPauseButton();
+        updatePlayButtons();
         startTickerIfPlaying();
     }
 
     @Override
     public void onPlayStateChanged(boolean playing) {
-        updatePlayPauseButton();
+        updatePlayButtons();
         applyKeepAwake();
         if (playing) {
             handler.removeCallbacks(ticker);
@@ -1570,7 +1691,7 @@ public final class MainActivity extends Activity implements
         handler.removeCallbacks(ticker);
         prepared = false;
         updateControls();
-        updatePlayPauseButton();
+        updatePlayButtons();
         String name = current != null ? current.name : "";
         Toast.makeText(this, getString(R.string.cannot_play) + (name.length() > 0 ? ": " + name : ""),
                 Toast.LENGTH_LONG).show();

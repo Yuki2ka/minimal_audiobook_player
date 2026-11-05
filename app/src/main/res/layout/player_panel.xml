@@ -2,7 +2,8 @@
 <!-- Fixed player panel. Top to bottom:
        played / total / remaining times
        precise seek bar (tap anywhere to jump)
-       proportional seek pads around a big icon-only play button
+       proportional seek pads around a big icon-only play button and, to its
+       right, the fast play button with the chosen speed under it
        previous, -N s, +N s, next
      The file name is not repeated here: the playing file is pinned to the top
      of the list, which leaves more room for the controls. -->
@@ -94,6 +95,33 @@
             android:layout_height="@dimen/transport_height"
             android:contentDescription="@string/play"
             android:src="@drawable/ic_play_state" />
+
+        <!-- Fast play: starts/resumes at the speed chosen in Settings (default
+             x1.3). The label shows that speed, so the button explains itself
+             without a settings round trip. -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/btn_fast_play"
+                style="@style/FastIconButton"
+                android:layout_width="56dp"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:contentDescription="@string/play_fast"
+                android:src="@drawable/ic_fast_play"
+                android:tint="@color/ic_fast_tint" />
+
+            <TextView
+                android:id="@+id/fast_speed_label"
+                style="@style/PlayerTime"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_horizontal"
+                android:text="@string/speed_normal" />
+        </LinearLayout>
 
         <Space
             android:layout_width="@dimen/gap"
