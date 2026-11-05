@@ -5,7 +5,7 @@ Next-step pointer lives in [TASKS.md](TASKS.md).
 
 Project: **Minimal Audiobook Player** — a dependency-free Android audiobook player
 (minSdk 24 / Android 7.0, targetSdk 34), package `io.github.yuki2ka.audiobookplayer`,
-version 1.7.0.
+version 1.7.1.
 
 ## Milestones
 
@@ -34,16 +34,17 @@ version 1.7.0.
 | 20 | 1.5.0: discrete whole-row circular browsing + folder-row deletion | ✅ |
 | 21 | 1.6.0: folder delimiters, equal rows, live drags, equal/highlighted speed buttons | ✅ built |
 | 22 | 1.7.0: readable file rows (wrap / font-scaled discrete height) + speed under the glyph | ✅ built |
+| 23 | 1.7.1: compact gaps shared by smooth and discrete rows (measured one-line height) | ✅ built |
 
 ## Verification (last run)
 
 | Check | Result |
 |-------|--------|
 | `tools/run-tests.sh` | **560 assertions, 0 failed** (locale forced to UTF-8) |
-| `tools/check-resources.py` | 90 ids, 11 layouts, 124 strings, 31 drawables — all references resolve, plus the file-row / speed-label shape checks |
+| `tools/check-resources.py` | 90 ids, 11 layouts, 124 strings, 31 drawables — all references resolve, plus the file-row / speed-label / row-spacing guards |
 | Full app Java compilation | Passed against an Android boot classpath, including the modified adapters / list view |
-| `tools/build-apk.sh` | `artifacts/AudiobooksMinimalPlayer-1.7.0.apk`, **224 KB** |
-| Manifest / badging | package correct, versionCode 9, versionName 1.7.0, **sdkVersion 24**, target 34, launcher `MainActivity` |
+| `tools/build-apk.sh` | `artifacts/AudiobooksMinimalPlayer-1.7.1.apk`, **224 KB** |
+| Manifest / badging | package correct, versionCode 10, versionName 1.7.1, **sdkVersion 24**, target 34, launcher `MainActivity` |
 | DEX | `classes.dex` packaged by D8 with `--min-api 24`; no AndroidX or Kotlin runtime |
 | Signature | `apksigner verify`: v2 + v3 true, `CN=Android Debug` (RSA-2048) |
 | Alignment | `zipalign -c -v -p 4`: successful |
@@ -80,7 +81,7 @@ JAVA_HOME=/tmp/toolchain/jdk-17.0.20.1+1 ./tools/run-tests.sh
 - **Sorting**: natural (digit-aware) sort with `Collator` primary strength, NFC-normalised
   names — correct for Cyrillic / CJK / Arabic and for `Chapter 2 < Chapter 10`.
 - **UI**: single dark theme, three swipeable pages (All files / Folders / Settings) with a
-  visible tab bar, fixed transport panel, touch targets ≥48 dp (rows 64 dp, transport
+  visible tab bar, fixed transport panel, touch targets ≥48 dp (rows 60 dp, transport
   68 dp), controls spread evenly across the width.
 - **Root folder** is chosen by the user; nothing outside it is scanned. Plain file paths are
   used directly (fast, low memory) with an explicit permission strategy per Android version
@@ -184,6 +185,28 @@ JAVA_HOME=/tmp/toolchain/jdk-17.0.20.1+1 ./tools/run-tests.sh
 - Built and verified: 560 assertions, 0 failed; resource check, full Java
   compilation, `aapt2` resource dump (`64.000000sp`), D8 with `--min-api 24`,
   zipalign and v2 + v3 signing all pass.
+- The `64 sp` discrete extent was replaced in 1.7.1: it grew with the font
+  scale and made the gaps between discrete rows much larger than in smooth mode.
+
+## 1.7.1 changes (compact list spacing)
+
+- **Smooth rows are ~20% tighter.** `row_min_height` 64 → 60 dp, text padding
+  10 → 8 dp, row margins 2 → 1 dp, and folder delimiters 40 → 32 dp. The rows
+  still wrap two-line names and keep a 48 dp delete target.
+- **Discrete gaps now match smooth mode.** The 1.7.0 `64 sp` constant scaled
+  with the system font (e.g. 83 dp at 1.3x) while smooth rows stayed near
+  64 dp, adding an empty band around every file and turning folder delimiters
+  into tall, mostly empty rows. `AudioFileAdapter.discreteRowHeightPx()` now
+  measures a one-line file row at the current font size and floors it at
+  `row_min_height`; file rows and delimiters all use that one height.
+  `DiscreteListView` receives it through `setDiscreteRowHeight()` and uses it
+  for the bottom gutter and the finger's row step, so both modes have the same
+  compact spacing instead of a font-scaled constant.
+- `tools/check-resources.py` guards the compact geometry and fails on a fixed
+  `sp` discrete height, a >60 dp row minimum, >8 dp padding or >1 dp margins.
+- Built and verified: 560 assertions, 0 failed; resource check (including the
+  new guards), full Java compilation, D8 with `--min-api 24`, zipalign and
+  v2 + v3 signing all pass.
 
 ## Known risks (device-only)
 

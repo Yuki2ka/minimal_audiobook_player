@@ -73,8 +73,8 @@ if [[ ! -f "$ANDROID_JAR" ]]; then
 fi
 
 APP_NAME="AudiobooksMinimalPlayer"
-VERSION_CODE="9"
-VERSION_NAME="1.7.0"
+VERSION_CODE="10"
+VERSION_NAME="1.7.1"
 MIN_SDK="24"
 TARGET_SDK="34"
 

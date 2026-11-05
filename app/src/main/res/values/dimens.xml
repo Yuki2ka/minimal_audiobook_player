@@ -12,13 +12,11 @@
     <!-- Touch targets. Everything interactive is at least 48dp tall,
          primary controls are 56-72dp. -->
     <dimen name="touch">48dp</dimen>
-    <dimen name="row_min_height">64dp</dimen>
-    <!-- Exact height of every All-files row in discrete mode. It is expressed
-         in sp so it grows with the user's font size: a fixed 64 dp box used to
-         cut the size / saved-position line in half on phones with large text.
-         At the default font scale this is still 64 dp. -->
-    <dimen name="row_discrete_height">64sp</dimen>
-    <dimen name="folder_delimiter_height">40dp</dimen>
+    <!-- Row height shared by smooth and discrete modes. 60dp (down from 64)
+         plus 8dp of text padding gives roughly 20% less empty space between
+         file rows, while staying well above the 48dp touch minimum. -->
+    <dimen name="row_min_height">60dp</dimen>
+    <dimen name="folder_delimiter_height">32dp</dimen>
     <dimen name="play_button_width">88dp</dimen>
     <dimen name="tab_height">54dp</dimen>
     <dimen name="step_height">52dp</dimen>

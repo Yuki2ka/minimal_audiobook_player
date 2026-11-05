@@ -43,7 +43,7 @@ public final class DiscreteListView extends ListView {
 
     private SwipeListener swipeListener;
     private boolean discreteMode;
-    /** Exact extent of a discrete row; 0 until discrete mode is enabled. */
+    /** Exact extent of a discrete row; supplied by the adapter. */
     private int discreteRowHeight;
     private boolean trackingTouch;
     private boolean ignoreGesture;
@@ -71,6 +71,20 @@ public final class DiscreteListView extends ListView {
         return discreteMode;
     }
 
+    /**
+     * The adapter measures one one-line file row and gives every discrete row
+     * that exact height. Using it for the bottom gutter and the finger's row
+     * step keeps both modes at the same compact spacing instead of inflating
+     * the list with a font-scaled constant.
+     */
+    public void setDiscreteRowHeight(int heightPx) {
+        discreteRowHeight = heightPx;
+        if (discreteMode) {
+            updateDiscretePadding(getHeight());
+            requestLayout();
+        }
+    }
+
     public void setDiscreteMode(boolean enabled) {
         if (discreteMode == enabled) {
             return;
@@ -85,14 +99,11 @@ public final class DiscreteListView extends ListView {
         setOverScrollMode(enabled ? View.OVER_SCROLL_NEVER : defaultOverScrollMode);
         setClipToPadding(enabled || defaultClipToPadding);
         if (enabled) {
-            // All rows use one explicit height, so the bottom gutter (and the
-            // finger's row step) cannot be computed from a partially laid-out
-            // or mixed file/delimiter row. sp makes it track the font scale.
-            discreteRowHeight =
-                    getResources().getDimensionPixelSize(R.dimen.row_discrete_height);
+            // All rows use the adapter's measured height, so the bottom gutter
+            // (and the finger's row step) cannot be computed from a partially
+            // laid-out or mixed file/delimiter row.
             updateDiscretePadding(getHeight());
         } else {
-            discreteRowHeight = 0;
             setPadding(defaultPaddingLeft, defaultPaddingTop,
                     defaultPaddingRight, defaultPaddingBottom);
         }
@@ -103,8 +114,6 @@ public final class DiscreteListView extends ListView {
     /** Recalculates the bottom inset after the adapter's row height changes. */
     public void refreshDiscreteLayout() {
         if (discreteMode) {
-            discreteRowHeight =
-                    getResources().getDimensionPixelSize(R.dimen.row_discrete_height);
             updateDiscretePadding(getHeight());
             requestLayout();
         }

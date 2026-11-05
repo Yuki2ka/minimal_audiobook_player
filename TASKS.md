@@ -3,6 +3,25 @@
 > Updated as work progresses. See [PROGRESS.md](PROGRESS.md) for milestones and
 > verified build/test results.
 
+## v1.7.1 — built, needs a device check
+
+- [x] **Smooth list gaps ~20% smaller**: `row_min_height` 64 → 60 dp, row
+      text padding 10 → 8 dp, row margins 2 → 1 dp, folder delimiters 40 → 32 dp.
+- [x] **Discrete gaps now match smooth mode**: dropped the `64 sp` constant
+      (it grew with the system font and added an empty band around every row).
+      `AudioFileAdapter` measures a one-line file row at the current font size,
+      floors it at 60 dp, and gives that exact height to every file row and
+      folder delimiter; `DiscreteListView` receives it via
+      `setDiscreteRowHeight()` for the bottom gutter and drag step.
+- [x] `check-resources.py` guards the compact geometry and rejects a fixed
+      `sp` discrete height.
+- [x] Tests 560 assertions, 0 failed; resource check and full app Java
+      compilation passed; versionCode 10; `AudiobooksMinimalPlayer-1.7.1.apk`
+      built, aligned and signed (v2 + v3).
+- [ ] Confirm on a device with the system font set to large: the space between
+      files looks the same with discrete scrolling on and off, and no half row
+      appears at the bottom.
+
 ## v1.7.0 — built, needs a device check
 
 - [x] **File-list text is readable again**: a file row wraps its content with a
@@ -153,7 +172,7 @@
 
 ## Next: on-device QA (needs a phone or emulator; none in this sandbox)
 
-1. Install `artifacts/AudiobooksMinimalPlayer-1.7.0.apk` on **Android 7** (the
+1. Install `artifacts/AudiobooksMinimalPlayer-1.7.1.apk` on **Android 7** (the
    minimum) and on **Android 13/14**, then walk through:
    - first launch → permission card → grant → scan;
    - decline the permission and use the app folder;
@@ -179,7 +198,8 @@
      shown, each swipe snaps without a fling, swiping down at the top brings in
      the preceding track, and next-track playback puts the playing track at top;
      repeat with the system font size set to large: names / resume lines stay
-     readable and the fast-speed label is not truncated;
+     readable, the fast-speed label is not truncated, and the gaps between
+     rows stay the same as in smooth mode;
      also verify row delete taps and horizontal page swipes still work;
    - in Folders, confirm the chevron is gone, the separate trash target opens a
      confirmation for the folder and its contents, cancel leaves it untouched,

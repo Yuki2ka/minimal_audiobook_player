@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- One row of an audio file list. The row grows with its text (at least
-     64 dp), like the layout used before discrete browsing: a long file name
+     60 dp), like the layout used before discrete browsing: a long file name
      can use two lines and the size / saved-position info is never squeezed
-     into a fixed box. Discrete mode sets this root to one exact, font-scaled
-     height instead (see AudioFileAdapter / DiscreteListView).
+     into a fixed box. Discrete mode sets this root to one exact, MEASURED
+     height instead (see AudioFileAdapter / DiscreteListView) so its gaps stay
+     the same as in smooth mode.
      The closing rule of a flat-list folder group is overlaid at the bottom, so
      it never takes height away from the text. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -11,9 +12,9 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginStart="8dp"
-    android:layout_marginTop="2dp"
+    android:layout_marginTop="1dp"
     android:layout_marginEnd="8dp"
-    android:layout_marginBottom="2dp"
+    android:layout_marginBottom="1dp"
     android:background="@drawable/bg_row"
     android:minHeight="@dimen/row_min_height">
 
@@ -45,9 +46,9 @@
             android:layout_weight="1"
             android:orientation="vertical"
             android:paddingStart="12dp"
-            android:paddingTop="10dp"
+            android:paddingTop="8dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="10dp">
+            android:paddingBottom="8dp">
 
             <TextView
                 android:id="@+id/row_title"
@@ -62,7 +63,7 @@
                 android:id="@+id/row_subtitle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:ellipsize="end"
                 android:singleLine="true"
                 android:textColor="@color/text_secondary"

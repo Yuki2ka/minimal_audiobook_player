@@ -4,8 +4,9 @@
 aapt2 already fails on missing resources, but this catches the reverse class of
 bugs that only show up at runtime: findViewById() on an id that no layout
 declares (e.g. a typo in an include, or an id that exists only in one
-orientation-specific layout). It also locks in the two layout shapes that keep
-file-row text and the fast-speed label fully visible.
+orientation-specific layout). It also locks in the layout shapes that keep
+file-row text and the fast-speed label fully visible, and the compact row
+spacing shared by smooth and discrete browsing.
 """
 import glob
 import os
@@ -195,10 +196,52 @@ if speed_label is None or speed_label.get(ANDROID + "layout_width") != "match_pa
     problems.append("player_panel.xml fast_speed_label needs full width and no ellipsize, "
                     "otherwise the speed is truncated to '...'")
 
-discrete_dimen = re.search(r'<dimen name="row_discrete_height">(\d+)sp</dimen>', values_text)
-if discrete_dimen is None:
-    problems.append("row_discrete_height must be an sp dimension so discrete rows grow "
-                    "with the system font size")
+def dp_value(element, attr):
+    """Numeric dp value of an android attribute, or None when it is not dp."""
+    value = element.get(ANDROID + attr) if element is not None else None
+    if value is None or not value.endswith("dp"):
+        return None
+    try:
+        return float(value[:-2])
+    except ValueError:
+        return None
+
+# Spacing regression: a fixed 64 sp discrete row (and 64 dp / 10 dp padding
+# smooth rows) made the gaps between files much larger, especially with a
+# larger system font. Keep the compact geometry and the shared measured height.
+row_min = re.search(r'<dimen name="row_min_height">(\d+)dp</dimen>', values_text)
+if row_min is None or int(row_min.group(1)) > 60:
+    problems.append("row_min_height must be <= 60dp so file rows stay compact")
+delimiter_dimen = re.search(r'<dimen name="folder_delimiter_height">(\d+)dp</dimen>',
+                            values_text)
+if delimiter_dimen is None or int(delimiter_dimen.group(1)) > 32:
+    problems.append("folder_delimiter_height must be <= 32dp so folder groups "
+                    "do not open a wide gap")
+details = with_id(audio, "row_details")
+for attr in ("paddingTop", "paddingBottom"):
+    pad = dp_value(details, attr)
+    if pad is None or pad > 8:
+        problems.append(f"item_audio.xml row_details {attr} must be <= 8dp to keep "
+                        "the gaps between file rows small")
+for attr in ("layout_marginTop", "layout_marginBottom"):
+    margin = dp_value(audio, attr)
+    if margin is None or margin > 1:
+        problems.append(f"item_audio.xml root {attr} must be <= 1dp to keep "
+                        "the gaps between file rows small")
+if re.search(r'<dimen name="row_discrete_height">\d+sp</dimen>', values_text):
+    problems.append("a fixed sp row height inflates discrete gaps with the font "
+                    "scale; measure a one-line row instead")
+
+adapter_src = open(os.path.join(SRC, "io", "github", "yuki2ka", "audiobookplayer",
+                                "ui", "AudioFileAdapter.java"), encoding="utf-8").read()
+list_src = open(os.path.join(SRC, "io", "github", "yuki2ka", "audiobookplayer",
+                             "ui", "DiscreteListView.java"), encoding="utf-8").read()
+if "discreteRowHeightPx" not in adapter_src or ".measure(" not in adapter_src:
+    problems.append("AudioFileAdapter must measure a one-line row for the discrete "
+                    "height, so discrete gaps match smooth mode at any font scale")
+if "setDiscreteRowHeight" not in list_src:
+    problems.append("DiscreteListView must use the adapter's measured row height "
+                    "for its gutter and drag step")
 
 if problems:
     print("Resource check FAILED:")

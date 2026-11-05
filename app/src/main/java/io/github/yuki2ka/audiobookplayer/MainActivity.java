@@ -208,6 +208,9 @@ public final class MainActivity extends Activity implements
                 scrollDiscreteFileList(direction, steps);
             }
         });
+        // Same measured row height for smooth and discrete browsing, so the
+        // discrete list does not grow extra gaps around every file.
+        listAll.setDiscreteRowHeight(adapter.discreteRowHeightPx());
         listAll.setDiscreteMode(prefs.discreteFileScroll());
 
         browser = new FolderBrowser(this, library, db, listFolders, folderPath,
@@ -1659,6 +1662,7 @@ public final class MainActivity extends Activity implements
             return;
         }
         adapter.setDiscreteMode(enabled);
+        listAll.setDiscreteRowHeight(adapter.discreteRowHeightPx());
         listAll.setDiscreteMode(enabled);
         if (enabled && current != null) {
             // Rebase the virtual sheet on the track that is actually playing.

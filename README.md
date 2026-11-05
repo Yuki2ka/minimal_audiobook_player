@@ -12,11 +12,11 @@ for imprecise fingers on small, old phones.
 ## Install the test build
 
 ```
-artifacts/AudiobooksMinimalPlayer-1.7.0.apk
+artifacts/AudiobooksMinimalPlayer-1.7.1.apk
 ```
 
 ```bash
-adb install -r artifacts/AudiobooksMinimalPlayer-1.7.0.apk
+adb install -r artifacts/AudiobooksMinimalPlayer-1.7.1.apk
 ```
 
 Or copy the APK to the phone and open it (Android will ask to allow installing
@@ -44,14 +44,16 @@ settings → all files, and folders → parent folder → all files.
 ### Discrete file-list scrolling
 
 The Settings checkbox is off by default, preserving the normal smooth ListView.
-In smooth mode a file row grows with its text (at least 64 dp): a long name can
+In smooth mode a file row grows with its text (at least 60 dp): a long name can
 wrap to two lines and the size / saved-position line is never clipped. When
 discrete browsing is enabled, every row — file or folder delimiter — uses one
-exact, font-scaled height (64 sp, i.e. 64 dp at the normal text size), so only
-complete rows are shown even with large system text. A vertical swipe jumps by
-whole rows without a pixel scroll or fling; rows change *while dragging* as each
-full row is crossed. A short swipe moves one row on release. Swipe up to browse
-forward. Swipe down to browse backward: at the top, the last queue item is
+exact height, **measured from a one-line file row at the current font size** and
+floored at 60 dp. That is the same height a smooth row uses, so discrete mode
+does not add extra empty space between files; large system text still gets the
+room it needs. A vertical swipe jumps by whole rows without a pixel scroll or
+fling; rows change *while dragging* as each full row is crossed. A short swipe
+moves one row on release. Swipe up to browse forward. Swipe down to browse
+backward: at the top, the last queue item is
 inserted at the beginning, so previous tracks are immediately reachable. The
 list wraps at either end without changing the playing track. Starting or
 advancing playback re-anchors the current track at the top, like a virtual sheet
@@ -104,9 +106,10 @@ tabs stay next to the controls.
 * The file name is deliberately not repeated here: the playing file is pinned to
   the top of the All-files list.
 
-Audio-file and subfolder rows are at least 64 dp tall and grow to fit their
-text (names wrap to two lines in smooth mode); each delete button is its own
-48×48 dp target, set back from the right edge. Tapping a row to play
+Audio-file and subfolder rows are at least 60 dp tall and grow to fit their
+text (names wrap to two lines in smooth mode); compact 8 dp text padding and
+1 dp row margins keep the gaps between files small. Each delete button is its
+own 48×48 dp target, set back from the right edge. Tapping a row to play
 or open it therefore almost never deletes it. Deleting asks yes/no unless you
 switch the confirmation off in Settings; deleting a folder removes its contents
 too. The parent-navigation row has no delete button.
