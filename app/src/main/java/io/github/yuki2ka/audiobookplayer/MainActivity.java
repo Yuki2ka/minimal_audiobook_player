@@ -13,7 +13,7 @@ import android.os.Looper;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.CheckBox;
+
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -130,7 +130,7 @@ public final class MainActivity extends Activity implements
     private Switch settingsDeleteSwitch;
     private Switch settingsKeepAwakeSwitch;
     private Switch settingsVolumeKeysSwitch;
-    private CheckBox settingsDiscreteScrollCheck;
+    private Switch settingsDiscreteScrollSwitch;
 
     private AudioFileAdapter adapter;
     private FolderBrowser browser;
@@ -385,7 +385,7 @@ public final class MainActivity extends Activity implements
         settingsDeleteSwitch = findViewById(R.id.settings_delete_switch);
         settingsKeepAwakeSwitch = findViewById(R.id.settings_keep_awake_switch);
         settingsVolumeKeysSwitch = findViewById(R.id.settings_volume_keys_switch);
-        settingsDiscreteScrollCheck = findViewById(R.id.settings_discrete_scroll_check);
+        settingsDiscreteScrollSwitch = findViewById(R.id.settings_discrete_scroll_switch);
 
         emptySettings.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -1525,7 +1525,7 @@ public final class MainActivity extends Activity implements
                         }
                     }
                 });
-        settingsDiscreteScrollCheck.setOnCheckedChangeListener(
+        settingsDiscreteScrollSwitch.setOnCheckedChangeListener(
                 new android.widget.CompoundButton.OnCheckedChangeListener() {
                     @Override
                     public void onCheckedChanged(android.widget.CompoundButton button, boolean checked) {
@@ -1545,7 +1545,7 @@ public final class MainActivity extends Activity implements
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        settingsDiscreteScrollCheck.toggle();
+                         settingsDiscreteScrollSwitch.toggle();
                     }
                 });
         findViewById(R.id.settings_delete_row).setOnClickListener(new View.OnClickListener() {
@@ -1689,7 +1689,7 @@ public final class MainActivity extends Activity implements
         settingsDeleteSwitch.setChecked(prefs.deleteWithoutConfirm());
         settingsKeepAwakeSwitch.setChecked(prefs.keepScreenOn());
         settingsVolumeKeysSwitch.setChecked(prefs.volumeKeysSeek());
-        settingsDiscreteScrollCheck.setChecked(prefs.discreteFileScroll());
+        settingsDiscreteScrollSwitch.setChecked(prefs.discreteFileScroll());
         // With full access the whole notification block disappears and the card
         // gets a green outline instead: less text, one glance is enough.
         int access = Storage.accessLevel(this);
