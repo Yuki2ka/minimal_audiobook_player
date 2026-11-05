@@ -13,6 +13,7 @@ import android.os.Looper;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -23,6 +24,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import io.github.yuki2ka.audiobookplayer.data.Db;
@@ -32,6 +35,7 @@ import io.github.yuki2ka.audiobookplayer.model.FolderNode;
 import io.github.yuki2ka.audiobookplayer.playback.PlayerEngine;
 import io.github.yuki2ka.audiobookplayer.scan.Library;
 import io.github.yuki2ka.audiobookplayer.ui.AudioFileAdapter;
+import io.github.yuki2ka.audiobookplayer.ui.DiscreteListView;
 import io.github.yuki2ka.audiobookplayer.ui.FolderAdapter;
 import io.github.yuki2ka.audiobookplayer.ui.FolderBrowser;
 import io.github.yuki2ka.audiobookplayer.ui.SeekPad;
@@ -76,7 +80,7 @@ public final class MainActivity extends Activity implements
     private View pageSettings;
     private TextView[] tabs;
 
-    private ListView listAll;
+    private DiscreteListView listAll;
     private View emptyAll;
     private TextView emptyTitle;
     private TextView emptyBody;
@@ -126,6 +130,7 @@ public final class MainActivity extends Activity implements
     private Switch settingsDeleteSwitch;
     private Switch settingsKeepAwakeSwitch;
     private Switch settingsVolumeKeysSwitch;
+    private CheckBox settingsDiscreteScrollCheck;
 
     private AudioFileAdapter adapter;
     private FolderBrowser browser;
@@ -192,10 +197,18 @@ public final class MainActivity extends Activity implements
         wirePermissionCard();
 
         adapter = new AudioFileAdapter(this, this, true);
+        adapter.setDiscreteMode(prefs.discreteFileScroll());
         adapter.setPositions(library.positions());
         adapter.setFiles(library.files());
         listAll.setAdapter(adapter);
         listAll.setEmptyView(emptyAll);
+        listAll.setSwipeListener(new DiscreteListView.SwipeListener() {
+            @Override
+            public void onDiscreteSwipe(int direction, int steps) {
+                scrollDiscreteFileList(direction, steps);
+            }
+        });
+        listAll.setDiscreteMode(prefs.discreteFileScroll());
 
         browser = new FolderBrowser(this, library, db, listFolders, folderPath,
                 folderUp, emptyFolders, this);
@@ -372,6 +385,7 @@ public final class MainActivity extends Activity implements
         settingsDeleteSwitch = findViewById(R.id.settings_delete_switch);
         settingsKeepAwakeSwitch = findViewById(R.id.settings_keep_awake_switch);
         settingsVolumeKeysSwitch = findViewById(R.id.settings_volume_keys_switch);
+        settingsDiscreteScrollCheck = findViewById(R.id.settings_discrete_scroll_check);
 
         emptySettings.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -791,6 +805,11 @@ public final class MainActivity extends Activity implements
         updateControls();
         adapter.setPlayingPath(file.path);
         browser.setPlaying(file.path);
+        if (prefs.discreteFileScroll()) {
+            // Playback has its own virtual sheet: every newly selected track
+            // starts at the first row, even after the user browsed elsewhere.
+            listAll.setSelectionFromTop(0, 0);
+        }
         engine.open(file.path, startAt, true);
         // After open(): the engine latches the speed and applies it as soon as
         // playback starts, so a track change keeps the chosen rate.
@@ -856,6 +875,47 @@ public final class MainActivity extends Activity implements
             playFile(previous, queueMode == Prefs.MODE_FOLDER ? Prefs.MODE_FOLDER : Prefs.MODE_UNIFIED);
             listAll.setSelection(0);
         }
+    }
+
+    /**
+     * Applies a discrete vertical swipe to the All-files circular queue.
+     * Swiping up advances the visible window one row at a time; once it reaches
+     * the end, the head moves to the tail. Swiping down reverses the window and,
+     * at the top, prepends the tail so the preceding track is immediately
+     * reachable. Playback itself is unchanged by browsing.
+     */
+    private void scrollDiscreteFileList(int direction, int steps) {
+        int count = library.queue().size();
+        if (!prefs.discreteFileScroll() || count < 2) {
+            return;
+        }
+
+        int top = TimeFormat.clamp(listAll.getFirstVisiblePosition(), 0, count - 1);
+        int visibleRows = Math.max(1, listAll.getChildCount());
+        boolean rotated = false;
+        int stepCount = Math.max(1, steps);
+        for (int i = 0; i < stepCount; i++) {
+            if (direction == DiscreteListView.FORWARD) {
+                if (top + visibleRows < count) {
+                    top++;
+                } else {
+                    // Keep the top index: after moving the head to the tail,
+                    // this exposes the next row and wraps cleanly at the end.
+                    library.queue().rotateViewForward();
+                    rotated = true;
+                }
+            } else if (top > 0) {
+                top--;
+            } else {
+                library.queue().rotateViewBackward();
+                rotated = true;
+            }
+        }
+
+        if (rotated) {
+            adapter.notifyDataSetChanged();
+        }
+        listAll.setSelectionFromTop(top, 0);
     }
 
     private void handleTrackEnded() {
@@ -948,6 +1008,11 @@ public final class MainActivity extends Activity implements
     @Override
     public void onFolderClick(FolderNode folder) {
         browser.show(folder.path);
+    }
+
+    @Override
+    public void onFolderDelete(FolderNode folder) {
+        confirmDeleteFolder(folder);
     }
 
     @Override
@@ -1054,6 +1119,9 @@ public final class MainActivity extends Activity implements
             }
             adapter.setPlayingPath(current.path);
             browser.setPlaying(current.path);
+            if (prefs.discreteFileScroll()) {
+                listAll.setSelectionFromTop(0, 0);
+            }
         } else {
             adapter.setPlayingPath(null);
             browser.setPlaying(null);
@@ -1221,6 +1289,166 @@ public final class MainActivity extends Activity implements
         startScan(false);
     }
 
+    private void confirmDeleteFolder(final FolderNode folder) {
+        if (folder == null) {
+            return;
+        }
+        if (prefs.deleteWithoutConfirm()) {
+            deleteFolder(folder);
+            return;
+        }
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.delete_folder_title)
+                .setMessage(getString(R.string.delete_folder_message, folder.name))
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.delete_confirm, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        deleteFolder(folder);
+                    }
+                })
+                .create();
+        dialog.setOnShowListener(new DialogInterface.OnShowListener() {
+            @Override
+            public void onShow(DialogInterface d) {
+                ((AlertDialog) d).getButton(AlertDialog.BUTTON_POSITIVE)
+                        .setTextColor(getColor(R.color.danger));
+            }
+        });
+        dialog.show();
+    }
+
+    /** Deletes one library subfolder and everything inside it, never the root. */
+    private void deleteFolder(FolderNode folder) {
+        File target = new File(folder.path);
+        ArrayList<File> deleteOrder = new ArrayList<>();
+        boolean safeToDelete = false;
+        try {
+            File canonicalRoot = new File(library.rootPath()).getCanonicalFile();
+            File canonicalTarget = target.getCanonicalFile();
+            File lexicalParent = target.getAbsoluteFile().getParentFile();
+            File canonicalParent = lexicalParent == null ? null : lexicalParent.getCanonicalFile();
+            // Reject the library root itself, paths outside it, and symbolic
+            // links/aliases. The latter prevents a folder row from deleting a
+            // different directory through a link.
+            safeToDelete = target.isDirectory()
+                    && canonicalParent != null
+                    && canonicalTarget.getParentFile() != null
+                    && canonicalTarget.getParentFile().equals(canonicalParent)
+                    && canonicalTarget.getName().equals(target.getName())
+                    && isStrictDescendant(canonicalRoot.getPath(), canonicalTarget.getPath())
+                    && collectFolderDeleteOrder(target, canonicalTarget, deleteOrder);
+            if (safeToDelete) {
+                deleteOrder.add(target);
+                for (File entry : deleteOrder) {
+                    if (!entry.delete()) {
+                        safeToDelete = false;
+                        break;
+                    }
+                }
+            }
+        } catch (IOException | SecurityException e) {
+            safeToDelete = false;
+        }
+
+        if (!safeToDelete) {
+            showFolderDeleteFailed();
+            // A filesystem may refuse an entry after some earlier entries were
+            // removed. Rescan either way so a partial delete cannot leave stale rows.
+            startScan(false);
+            return;
+        }
+
+        String deletedPath = folder.path;
+        boolean stoppedPlaying = current != null && isPathWithin(deletedPath, current.path);
+        db.deletePositionsUnder(deletedPath);
+        db.deleteFolderStatesUnder(deletedPath);
+        library.removeFolder(folder);
+        if (isPathWithin(deletedPath, prefs.lastFile())) {
+            prefs.setLastFile(null);
+        }
+        if (isPathWithin(deletedPath, prefs.lastFolder())) {
+            String parent = target.getParent();
+            prefs.setLastFolder(parent);
+        }
+
+        if (stoppedPlaying) {
+            handler.removeCallbacks(ticker);
+            engine.stopAndRelease();
+            current = null;
+            folderQueue = null;
+            prepared = false;
+            durationMs = 0;
+            seekBar.setMax(1);
+            seekBar.setProgress(0);
+            updateTimeLabels(0, 0);
+            adapter.setPlayingPath(null);
+            browser.setPlaying(null);
+            updatePlayButtons();
+            updateControls();
+        }
+        adapter.notifyDataSetChanged();
+        browser.refresh();
+        Toast.makeText(this, getString(R.string.deleted_folder, folder.name),
+                Toast.LENGTH_SHORT).show();
+        startScan(false);
+    }
+
+    /** Collects entries post-order, refusing to traverse any symbolic link. */
+    private static boolean collectFolderDeleteOrder(File directory, File canonicalDirectory,
+                                                     List<File> deleteOrder) throws IOException {
+        File[] children = directory.listFiles();
+        if (children == null) {
+            return false;
+        }
+        for (File child : children) {
+            File canonicalChild = child.getCanonicalFile();
+            if (!canonicalChild.getName().equals(child.getName())
+                    || canonicalChild.getParentFile() == null
+                    || !canonicalChild.getParentFile().equals(canonicalDirectory)) {
+                return false;
+            }
+            if (child.isDirectory()
+                    && !collectFolderDeleteOrder(child, canonicalChild, deleteOrder)) {
+                return false;
+            }
+            deleteOrder.add(child);
+        }
+        return true;
+    }
+
+    private static boolean isStrictDescendant(String directory, String path) {
+        if (directory == null || path == null || directory.equals(path)) {
+            return false;
+        }
+        String prefix = directory.endsWith(File.separator)
+                ? directory : directory + File.separator;
+        return path.startsWith(prefix);
+    }
+
+    private static boolean isPathWithin(String directory, String path) {
+        if (directory == null || path == null) {
+            return false;
+        }
+        String prefix = directory.endsWith(File.separator)
+                ? directory : directory + File.separator;
+        return path.equals(directory) || path.startsWith(prefix);
+    }
+
+    private void showFolderDeleteFailed() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.delete_failed_title)
+                .setMessage(R.string.delete_folder_failed)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.tab_settings, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int which) {
+                        showPage(PAGE_SETTINGS, true);
+                    }
+                })
+                .show();
+    }
+
     // ---------------------------------------------------------------- settings
 
     private void wireSettings() {
@@ -1297,12 +1525,29 @@ public final class MainActivity extends Activity implements
                         }
                     }
                 });
+        settingsDiscreteScrollCheck.setOnCheckedChangeListener(
+                new android.widget.CompoundButton.OnCheckedChangeListener() {
+                    @Override
+                    public void onCheckedChanged(android.widget.CompoundButton button, boolean checked) {
+                        if (!bindingSettings) {
+                            prefs.setDiscreteFileScroll(checked);
+                            applyDiscreteFileScroll(checked);
+                        }
+                    }
+                });
         findViewById(R.id.settings_volume_keys_row).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 settingsVolumeKeysSwitch.toggle();
             }
         });
+        findViewById(R.id.settings_discrete_scroll_row).setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        settingsDiscreteScrollCheck.toggle();
+                    }
+                });
         findViewById(R.id.settings_delete_row).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -1403,6 +1648,33 @@ public final class MainActivity extends Activity implements
         }
     }
 
+    private void applyDiscreteFileScroll(boolean enabled) {
+        if (adapter == null || listAll == null) {
+            return;
+        }
+        adapter.setDiscreteMode(enabled);
+        listAll.setDiscreteMode(enabled);
+        if (enabled && current != null) {
+            // Rebase the virtual sheet on the track that is actually playing.
+            library.queue().rotateTo(current.path);
+            adapter.notifyDataSetChanged();
+        }
+        listAll.refreshDiscreteLayout();
+        listAll.post(new Runnable() {
+            @Override
+            public void run() {
+                if (isFinishing()) {
+                    return;
+                }
+                if (prefs.discreteFileScroll()) {
+                    listAll.setSelectionFromTop(0, 0);
+                } else {
+                    listAll.setSelection(0);
+                }
+            }
+        });
+    }
+
     private void refreshSettings() {
         if (settingsRootPath == null) {
             return;
@@ -1417,6 +1689,7 @@ public final class MainActivity extends Activity implements
         settingsDeleteSwitch.setChecked(prefs.deleteWithoutConfirm());
         settingsKeepAwakeSwitch.setChecked(prefs.keepScreenOn());
         settingsVolumeKeysSwitch.setChecked(prefs.volumeKeysSeek());
+        settingsDiscreteScrollCheck.setChecked(prefs.discreteFileScroll());
         // With full access the whole notification block disappears and the card
         // gets a green outline instead: less text, one glance is enough.
         int access = Storage.accessLevel(this);

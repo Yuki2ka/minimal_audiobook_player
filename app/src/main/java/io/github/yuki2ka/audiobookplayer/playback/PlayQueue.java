@@ -10,11 +10,14 @@ import io.github.yuki2ka.audiobookplayer.model.AudioFile;
  * The unified ("All files") list is a rotating queue:
  *
  * <ul>
- *   <li>the file that is playing is always the first item;</li>
+ *   <li>the current file is brought to the first item when playback starts or
+ *       advances;</li>
  *   <li>when a file finishes, it moves to the bottom and the next one rises
  *       to the top ({@link #advanceFrom(String)});</li>
  *   <li>"previous" moves the last item to the top
- *       ({@link #retreatFrom(String)}), so the queue behaves like a ring.</li>
+ *       ({@link #retreatFrom(String)}), so the queue behaves like a ring;</li>
+ *   <li>discrete list browsing can rotate the visible head in either direction
+ *       without changing the track that is playing.</li>
  * </ul>
  *
  * <p>This is a pure-Java class (no Android imports) so the rotation rules are
@@ -113,6 +116,32 @@ public final class PlayQueue {
         items.add(0, last);
         anchor = last.path;
         return last;
+    }
+
+    /**
+     * Discrete list swipe toward later files: move the first row to the end.
+     * This is a view rotation only; playback keeps its current track.
+     */
+    public void rotateViewForward() {
+        if (items.size() < 2) {
+            return;
+        }
+        AudioFile first = items.remove(0);
+        items.add(first);
+        anchor = items.get(0).path;
+    }
+
+    /**
+     * Discrete list swipe toward earlier files: insert the last row at the
+     * beginning. This lets the circular list move backward without a hard end.
+     */
+    public void rotateViewBackward() {
+        if (items.size() < 2) {
+            return;
+        }
+        AudioFile last = items.remove(items.size() - 1);
+        items.add(0, last);
+        anchor = last.path;
     }
 
     private void rotateToInternal(String path) {

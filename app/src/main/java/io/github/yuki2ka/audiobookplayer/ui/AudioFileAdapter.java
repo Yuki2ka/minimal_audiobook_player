@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -40,6 +41,7 @@ public final class AudioFileAdapter extends BaseAdapter {
     private List<AudioFile> items = new ArrayList<>();
     private Map<String, Long> positions = Collections.emptyMap();
     private String playingPath;
+    private boolean discreteMode;
 
     public AudioFileAdapter(Context context, Callbacks callbacks, boolean showParentName) {
         this.context = context;
@@ -61,6 +63,18 @@ public final class AudioFileAdapter extends BaseAdapter {
 
     public void setPlayingPath(String path) {
         this.playingPath = path;
+        notifyDataSetChanged();
+    }
+
+    /**
+     * Discrete mode uses equal-height, single-line rows so the ListView can
+     * expose only complete items and align every swipe to exactly one row.
+     */
+    public void setDiscreteMode(boolean enabled) {
+        if (discreteMode == enabled) {
+            return;
+        }
+        discreteMode = enabled;
         notifyDataSetChanged();
     }
 
@@ -107,6 +121,19 @@ public final class AudioFileAdapter extends BaseAdapter {
             holder = (Holder) convertView.getTag();
         }
 
+        int rowHeight = discreteMode
+                ? context.getResources().getDimensionPixelSize(R.dimen.row_min_height)
+                : ViewGroup.LayoutParams.WRAP_CONTENT;
+        ViewGroup.LayoutParams rowParams = holder.root.getLayoutParams();
+        if (rowParams != null && rowParams.height != rowHeight) {
+            rowParams.height = rowHeight;
+            holder.root.setLayoutParams(rowParams);
+        }
+        holder.title.setMaxLines(discreteMode ? 1 : 2);
+        int textVerticalPadding = dp(discreteMode ? 6 : 10);
+        holder.details.setPaddingRelative(holder.details.getPaddingStart(), textVerticalPadding,
+                holder.details.getPaddingEnd(), textVerticalPadding);
+
         AudioFile file = items.get(position);
         holder.file = file;
         boolean playing = file.path.equals(playingPath);
@@ -121,6 +148,10 @@ public final class AudioFileAdapter extends BaseAdapter {
         holder.delete.setContentDescription(
                 context.getString(R.string.delete_file) + ": " + file.name);
         return convertView;
+    }
+
+    private int dp(int value) {
+        return Math.round(value * context.getResources().getDisplayMetrics().density);
     }
 
     private CharSequence subtitleFor(AudioFile file) {
@@ -141,6 +172,7 @@ public final class AudioFileAdapter extends BaseAdapter {
     private static final class Holder {
         final View root;
         final ImageView icon;
+        final LinearLayout details;
         final TextView title;
         final TextView subtitle;
         final ImageButton delete;
@@ -149,6 +181,7 @@ public final class AudioFileAdapter extends BaseAdapter {
         Holder(View view) {
             root = view;
             icon = view.findViewById(R.id.row_icon);
+            details = view.findViewById(R.id.row_details);
             title = view.findViewById(R.id.row_title);
             subtitle = view.findViewById(R.id.row_subtitle);
             delete = view.findViewById(R.id.row_delete);

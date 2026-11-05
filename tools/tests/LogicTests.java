@@ -537,6 +537,17 @@ public final class LogicTests {
         eq("retreat returns last", c, previous);
         eq("retreat moves last to front", Arrays.asList(c, d, a, b), queue.items());
 
+        queue.rotateViewBackward();
+        eq("discrete backward swipe prepends last item", Arrays.asList(b, c, d, a), queue.items());
+        eq("backward swipe updates view anchor", b.path, queue.anchor());
+        queue.rotateViewForward();
+        eq("discrete forward swipe moves first item to end", Arrays.asList(c, d, a, b), queue.items());
+        eq("forward swipe updates view anchor", c.path, queue.anchor());
+        queue.rotateViewBackward();
+        AudioFile afterBrowse = queue.advanceFrom(c.path);
+        eq("playback advance re-anchors after list browsing", d, afterBrowse);
+        eq("playback advance after browsing", Arrays.asList(d, a, b, c), queue.items());
+
         queue.reset(sorted, null);
         eq("missing anchor keeps sorted order", sorted, queue.items());
         queue.promoteToFront(2);

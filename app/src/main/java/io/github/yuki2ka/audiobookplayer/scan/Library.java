@@ -4,8 +4,12 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 
+import java.io.File;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -215,5 +219,65 @@ public final class Library {
         }
         queue.items().remove(file);
         positions.remove(file.path);
+    }
+
+    /** Removes a deleted subfolder and its audio files from the current scan. */
+    public void removeFolder(FolderNode folder) {
+        if (folder == null || result == null || folder == result.rootNode) {
+            return;
+        }
+        FolderNode parent = result.nodes.get(folder.parentPath());
+        if (parent == null || !parent.folders.remove(folder)) {
+            return;
+        }
+
+        int removedAudioFiles = folder.totalFiles;
+        HashSet<String> removedPaths = new HashSet<>();
+        collectFolderPaths(folder, removedPaths);
+
+        Iterator<AudioFile> allFiles = result.allFiles.iterator();
+        while (allFiles.hasNext()) {
+            if (removedPaths.contains(allFiles.next().path)) {
+                allFiles.remove();
+            }
+        }
+        Iterator<AudioFile> queueItems = queue.items().iterator();
+        while (queueItems.hasNext()) {
+            if (removedPaths.contains(queueItems.next().path)) {
+                queueItems.remove();
+            }
+        }
+
+        Iterator<String> savedPaths = positions.keySet().iterator();
+        while (savedPaths.hasNext()) {
+            if (isWithin(folder.path, savedPaths.next())) {
+                savedPaths.remove();
+            }
+        }
+
+        FolderNode ancestor = parent;
+        while (ancestor != null) {
+            ancestor.totalFiles = Math.max(0, ancestor.totalFiles - removedAudioFiles);
+            ancestor = result.nodes.get(ancestor.parentPath());
+        }
+    }
+
+    private void collectFolderPaths(FolderNode folder, Set<String> paths) {
+        for (AudioFile file : folder.files) {
+            paths.add(file.path);
+        }
+        for (FolderNode child : folder.folders) {
+            collectFolderPaths(child, paths);
+        }
+        result.nodes.remove(folder.path);
+    }
+
+    private static boolean isWithin(String directory, String path) {
+        if (directory == null || path == null) {
+            return false;
+        }
+        String prefix = directory.endsWith(File.separator)
+                ? directory : directory + File.separator;
+        return path.equals(directory) || path.startsWith(prefix);
     }
 }

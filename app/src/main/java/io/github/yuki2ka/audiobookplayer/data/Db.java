@@ -6,6 +6,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import java.io.File;
 import java.util.HashMap;
 
 /**
@@ -190,5 +191,26 @@ public final class Db extends SQLiteOpenHelper {
 
     public void deleteFolderState(String folder) {
         getWritableDatabase().delete(T_FOLDER, "folder=?", new String[]{folder});
+    }
+
+    /** Removes saved positions for files at or under a deleted directory. */
+    public void deletePositionsUnder(String directory) {
+        deleteRowsUnder(T_POSITIONS, "path", directory);
+    }
+
+    /** Removes saved scroll/last-file state for a deleted directory subtree. */
+    public void deleteFolderStatesUnder(String directory) {
+        deleteRowsUnder(T_FOLDER, "folder", directory);
+    }
+
+    private void deleteRowsUnder(String table, String pathColumn, String directory) {
+        if (directory == null || directory.length() == 0) {
+            return;
+        }
+        String prefix = directory.endsWith(File.separator)
+                ? directory : directory + File.separator;
+        getWritableDatabase().delete(table,
+                pathColumn + "=? OR substr(" + pathColumn + ",1,?)=?",
+                new String[]{directory, String.valueOf(prefix.length()), prefix});
     }
 }

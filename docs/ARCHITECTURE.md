@@ -38,7 +38,7 @@ gestures starting on a `SeekBar`, `Switch` or `EditText`):
 activity_main.xml
   tabs_bar            three equal-weight TextViews + state-list text colour
   pages_container     SwipePager
-    page_all          ListView + empty/scan state
+    page_all          DiscreteListView + empty/scan state
     page_folders      breadcrumb bar + ListView + empty state
     page_settings     ScrollView with cards
   player_panel        fixed, outside the pager: times, seek bar,
@@ -60,7 +60,12 @@ seek amount, so the curve stays Android-free and unit-tested:
 
 `FolderPickerActivity` is a second, tiny activity: a directory list, a path
 field, up/use/cancel. It returns an absolute path in an intent extra and uses no
-storage framework APIs.
+storage framework APIs. Its rows still show the navigation chevron. In the
+Folder explorer, `FolderAdapter` hides that redundant chevron and adds a separate
+trash target to subfolder rows (never the `..` row); confirming deletion removes
+the folder subtree and its saved positions. Recursive deletion preflights the
+whole tree, rejects symlinks/aliases, and verifies the target is below—not equal
+to—the chosen library root.
 
 ## Data and persistence
 
@@ -88,9 +93,10 @@ folder_state(folder TEXT PRIMARY KEY, last_path TEXT NOT NULL, scroll INTEGER)
 ### SharedPreferences (`Prefs`)
 
 `root_path`, `seek_step_seconds` (1–60, default 10), `delete_without_confirm`,
-`keep_screen_on`, `last_file`, `last_mode`, `last_folder`, `last_page`,
-`root_history` (newline-separated, newest first, capped at 6 — shown as the
-recent-folder list in Settings; newline is safe because paths cannot contain one).
+`keep_screen_on`, `volume_keys_seek`, `discrete_file_scroll` (default off),
+`last_file`, `last_mode`, `last_folder`, `last_page`, `root_history`
+(newline-separated, newest first, capped at 6 — shown as the recent-folder list
+in Settings; newline is safe because paths cannot contain one).
 
 ### Fingerprint (`util/Fingerprint`)
 
@@ -112,6 +118,19 @@ The list is ordered naturally by file name, across folders. Rotation rules:
   item is returned. End of queue → `null`, and the finished track stays loaded
   so Play restarts it instead of doing nothing.
 * **retreatFrom(current)** — "previous file" pulls the last item to the top.
+* **rotateViewBackward() / rotateViewForward()** — discrete list swipes rotate
+  the queue head in either direction without changing the playing file. At the
+  top, a backward swipe prepends the last item; at the bottom, a forward swipe
+  moves the head to the tail. A playback selection/advance re-anchors the
+  current track at row zero again.
+
+`ui/DiscreteListView` owns vertical swipe detection only while the setting is
+on. It bypasses ListView's pixel drag/fling, gives the adapter fixed-height
+single-line rows, and adjusts the bottom padding to an integer number of rows.
+A short swipe is one row; longer drags snap to a whole-row count. Horizontal
+swipes still belong to `SwipePager`, and taps on the row/delete button stay
+normal. The activity applies the row steps and queue rotations on the main
+thread.
 
 `PlayQueue` is pure Java (no Android imports) and is covered by the JVM tests.
 
@@ -245,7 +264,8 @@ produces a `ScanResult` that is applied on the main thread.
 * `AudioFile.displayName`,
 * `Fingerprint` (same content under different names, empty files, 300 KiB
   sampled-range semantics, missing files),
-* `PlayQueue` (reset/advance/retreat/promote/single/empty/non-head advance),
+* `PlayQueue` (reset/advance/retreat/promote, discrete view rotations,
+  single/empty/non-head advance),
 * `Scanner` (natural order, dotfiles skipped, non-audio excluded, Unicode folder
   names, missing/not-a-directory errors, progress callbacks, a 307-file tree).
 

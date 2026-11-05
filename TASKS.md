@@ -3,6 +3,28 @@
 > Updated as work progresses. See [PROGRESS.md](PROGRESS.md) for milestones and
 > verified build/test results.
 
+## v1.5.0 — built, needs a device check
+
+- [x] **Settings → Discrete file-list scrolling** (checkbox, off by default),
+      persisted in SharedPreferences.
+- [x] The All-files page uses fixed-height single-line rows in this mode; vertical
+      swipes jump by whole rows without pixel scrolling or flings, and the
+      viewport leaves no partial row visible.
+- [x] Swipe up advances through the circular list; swipe down goes backward,
+      prepending the last row at the top and wrapping at the other end. Browsing
+      does not change playback; selecting/advancing a track re-anchors it at row
+      zero.
+- [x] Folder rows no longer show a redundant chevron; they have a separate
+      delete target. Confirmed folder deletion removes its contents, while the
+      parent-navigation row remains protected. Delete icons are inset farther
+      from the right edge.
+- [x] Tests 525 assertions, 0 failed; versionCode 7;
+      `AudiobooksMinimalPlayer-1.5.0.apk` built and signed.
+- [ ] **Confirm on a device**: whole rows only, no fling, short/long swipes move
+      expected row counts, down at the top reveals the prior track, deletes and
+      horizontal page swipes still work, and next-track playback resets the
+      playing file to the top.
+
 ## v1.4.0 — done, needs a device check
 
 - [x] **Fast play button** right of the play button: double-triangle glyph, the
@@ -91,7 +113,7 @@
 
 ## Next: on-device QA (needs a phone or emulator; none in this sandbox)
 
-1. Install `artifacts/AudiobooksMinimalPlayer-1.4.0.apk` on **Android 7** (the
+1. Install `artifacts/AudiobooksMinimalPlayer-1.5.0.apk` on **Android 7** (the
    minimum) and on **Android 13/14**, then walk through:
    - first launch → permission card → grant → scan;
    - decline the permission and use the app folder;
@@ -113,6 +135,13 @@
    - press fast play while paused (starts at x1.3, no immediate pause), press it
      again (pauses), press plain play while playing (switches to x1, keeps
      playing), and change the speed in Settings while listening;
+   - enable discrete file-list scrolling: check that only complete rows are
+     shown, each swipe snaps without a fling, swiping down at the top brings in
+     the preceding track, and next-track playback puts the playing track at top;
+     also verify row delete taps and horizontal page swipes still work;
+   - in Folders, confirm the chevron is gone, the separate trash target opens a
+     confirmation for the folder and its contents, cancel leaves it untouched,
+     and confirm removes it and refreshes the list;
    - enable "Volume keys seek (screen off)", start playback, turn the screen off:
      short press should seek by the configured step, a long press should change
      the volume, and with the screen on the keys must behave normally.
