@@ -47,9 +47,11 @@ mkdir -p "$OUT"
     "$SRC/util/SeekCurve.java" \
     "$SRC/util/PlaybackSpeed.java" \
     "$SRC/util/VolumeGesture.java" \
+    "$SRC/util/DiscreteDrag.java" \
     "$SRC/util/NaturalSort.java" \
     "$SRC/util/Fingerprint.java" \
     "$SRC/model/AudioFile.java" \
+    "$SRC/model/FileListRows.java" \
     "$SRC/model/FolderNode.java" \
     "$SRC/model/ScanResult.java" \
     "$SRC/playback/PlayQueue.java" \

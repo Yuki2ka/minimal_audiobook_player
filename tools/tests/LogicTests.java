@@ -11,10 +11,12 @@ import java.util.Objects;
 import java.util.Random;
 
 import io.github.yuki2ka.audiobookplayer.model.AudioFile;
+import io.github.yuki2ka.audiobookplayer.model.FileListRows;
 import io.github.yuki2ka.audiobookplayer.model.FolderNode;
 import io.github.yuki2ka.audiobookplayer.model.ScanResult;
 import io.github.yuki2ka.audiobookplayer.playback.PlayQueue;
 import io.github.yuki2ka.audiobookplayer.scan.Scanner;
+import io.github.yuki2ka.audiobookplayer.util.DiscreteDrag;
 import io.github.yuki2ka.audiobookplayer.util.Fingerprint;
 import io.github.yuki2ka.audiobookplayer.util.SeekCurve;
 import io.github.yuki2ka.audiobookplayer.util.NaturalSort;
@@ -38,6 +40,8 @@ public final class LogicTests {
         testVolumeGesture();
         testSeekZoneMapping();
         testPlaybackSpeed();
+        testDiscreteDrag();
+        testFileListRows();
         testNaturalSortBasics();
         testNaturalSortUnicode();
         testDisplayName();
@@ -375,6 +379,74 @@ public final class LogicTests {
             float withInsets = SeekCurve.fractionForX(x, width, 0f, 0f);
             eq("plain ratio at " + x, x / width, withInsets);
         }
+    }
+
+    private static void testDiscreteDrag() {
+        DiscreteDrag drag = new DiscreteDrag();
+        eq("partial row does not update", 0, drag.update(-63, 64));
+        eq("first crossed row updates during drag", 1, drag.update(-64, 64));
+        eq("same row is not applied twice", 0, drag.update(-100, 64));
+        eq("second crossed row is another delta", 1, drag.update(-128, 64));
+        eq("release does not repeat delivered rows", 0, drag.finish(-128, 64));
+
+        drag.reset();
+        eq("two rows at once", 2, drag.update(-128, 64));
+        eq("reversal reports inverse delta", -3, drag.update(64, 64));
+        eq("reversal release is idempotent", 0, drag.finish(64, 64));
+
+        drag.reset();
+        eq("short upward swipe moves one on release", 1, drag.finish(-12, 64));
+        drag.reset();
+        eq("short downward swipe moves one on release", -1, drag.finish(12, 64));
+        drag.reset();
+        eq("zero distance does not move", 0, drag.finish(0, 64));
+        eq("invalid extent is safe", 0, drag.update(-100, 0));
+    }
+
+    private static AudioFile inFolder(String folder, String name) {
+        return new AudioFile("/root/" + folder + "/" + name + ".mp3",
+                name, folder, 1L, 1L);
+    }
+
+    private static void testFileListRows() {
+        AudioFile a1 = inFolder("A", "01");
+        AudioFile a2 = inFolder("A", "02");
+        AudioFile b1 = inFolder("B", "03");
+        AudioFile c1 = inFolder("C", "04");
+        AudioFile a3 = inFolder("A", "05");
+        List<AudioFile> files = new ArrayList<>(Arrays.asList(a1, a2, b1, c1, a3));
+        List<AudioFile> original = new ArrayList<>(files);
+
+        FileListRows rows = new FileListRows();
+        rows.rebuild(files, true);
+        eq("four contiguous folder groups plus five files", 9, rows.size());
+        eq("first row is folder delimiter", FileListRows.TYPE_FOLDER, rows.typeAt(0));
+        eq("first folder name", "A", rows.folderNameAt(0));
+        eq("first file row", a1, rows.fileAt(1));
+        eq("null file on delimiter", null, rows.fileAt(3));
+        eq("second folder name", "B", rows.folderNameAt(3));
+        check("last A file closes first group", rows.isGroupEnd(2));
+        check("file inside group has no closing line", !rows.isGroupEnd(1));
+        check("single-file B group closes", rows.isGroupEnd(4));
+        check("last overall file closes", rows.isGroupEnd(8));
+        eq("same folder later gets a new delimiter", "A", rows.folderNameAt(7));
+        eq("queue remains unchanged", original, files);
+
+        eq("folder maps to first file beneath it", 0, rows.fileIndexAtOrAfter(0));
+        eq("file maps to itself", 1, rows.fileIndexAtOrAfter(2));
+        eq("second folder maps to B file", 2, rows.fileIndexAtOrAfter(3));
+        eq("queue index maps around delimiter", 4, rows.rowForFileIndex(2));
+        eq("last queue index maps to last row", 8, rows.rowForFileIndex(4));
+        eq("invalid queue index has no row", -1, rows.rowForFileIndex(5));
+
+        rows.rebuild(files, false);
+        eq("folder delimiters can be disabled", files.size(), rows.size());
+        eq("plain rows start with file", FileListRows.TYPE_FILE, rows.typeAt(0));
+        check("plain rows have no group closing lines", !rows.isGroupEnd(4));
+
+        rows.rebuild(Collections.<AudioFile>emptyList(), true);
+        eq("empty queue has no rows", 0, rows.size());
+        eq("empty queue has no file mapping", -1, rows.fileIndexAtOrAfter(0));
     }
 
     private static void testNaturalSortBasics() {

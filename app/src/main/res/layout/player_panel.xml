@@ -91,36 +91,47 @@
         <ImageButton
             android:id="@+id/btn_play"
             style="@style/PrimaryIconButton"
-            android:layout_width="88dp"
+            android:layout_width="@dimen/play_button_width"
             android:layout_height="@dimen/transport_height"
             android:contentDescription="@string/play"
             android:src="@drawable/ic_play_state" />
 
-        <!-- Fast play: starts/resumes at the speed chosen in Settings (default
-             x1.3). The label shows that speed, so the button explains itself
-             without a settings round trip. -->
+        <!-- Same outer size as normal play. The selected state is duplicated
+             by both children: fast play becomes [pause  x1.3] while active. -->
         <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:orientation="vertical">
+            android:id="@+id/btn_fast_play"
+            android:layout_width="@dimen/play_button_width"
+            android:layout_height="@dimen/transport_height"
+            android:background="@drawable/bg_button_fast"
+            android:clickable="true"
+            android:contentDescription="@string/play_fast"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
 
-            <ImageButton
-                android:id="@+id/btn_fast_play"
-                style="@style/FastIconButton"
-                android:layout_width="56dp"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:contentDescription="@string/play_fast"
-                android:src="@drawable/ic_fast_play"
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:contentDescription="@null"
+                android:duplicateParentState="true"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_fast_play_state"
                 android:tint="@color/ic_fast_tint" />
 
             <TextView
                 android:id="@+id/fast_speed_label"
-                style="@style/PlayerTime"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:gravity="center_horizontal"
-                android:text="@string/speed_normal" />
+                android:layout_marginStart="4dp"
+                android:duplicateParentState="true"
+                android:fontFamily="monospace"
+                android:gravity="center"
+                android:singleLine="true"
+                android:text="@string/speed_normal"
+                android:textColor="@color/ic_fast_tint"
+                android:textSize="12sp" />
         </LinearLayout>
 
         <Space

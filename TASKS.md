@@ -3,6 +3,23 @@
 > Updated as work progresses. See [PROGRESS.md](PROGRESS.md) for milestones and
 > verified build/test results.
 
+## v1.6.0 — built, needs a device check
+
+- [x] All-files folder names are delimiters before contiguous folder groups,
+      with a closing rule after the last file, instead of subtitles on every row.
+- [x] Smooth and discrete file rows share the same fixed 64 dp height; discrete
+      folder delimiters use that height too, so names/subtitles are not clipped.
+- [x] Discrete browsing applies each newly crossed row while the finger drags,
+      handles reversals as deltas, and does not repeat those rows on release.
+- [x] Normal and fast play buttons have equal 88×68 dp frames; fast speed is
+      inline, and only the button owning the playing speed is accent-filled and
+      shows the pause icon. Inactive/paused buttons stay dark and outlined.
+- [x] Tests 560 assertions, 0 failed; resource check and full app Java
+      compilation passed; versionCode 8; `AudiobooksMinimalPlayer-1.6.0.apk`
+      built, aligned and signed (v2 + v3).
+- [ ] Confirm on a device: delimiters/closing rules, equal row sizing, live drag
+      updates, all three play-button states, and active-speed highlighting.
+
 ## v1.5.0 — built, needs a device check
 
 - [x] **Settings → Discrete file-list scrolling** (checkbox, off by default),
@@ -113,7 +130,7 @@
 
 ## Next: on-device QA (needs a phone or emulator; none in this sandbox)
 
-1. Install `artifacts/AudiobooksMinimalPlayer-1.5.0.apk` on **Android 7** (the
+1. Install `artifacts/AudiobooksMinimalPlayer-1.6.0.apk` on **Android 7** (the
    minimum) and on **Android 13/14**, then walk through:
    - first launch → permission card → grant → scan;
    - decline the permission and use the app folder;

@@ -32,7 +32,7 @@
     <string name="current_file">Currently playing</string>
     <string name="prev_short">Prev</string>
     <string name="next_short">Next</string>
-    <string name="settings_project_link">\u2192 GitHub project</string>
+    <string name="settings_project_link">%1$s \u00B7 GitHub project \u2192</string>
     <string name="project_url" translatable="false">https://github.com/Yuki2ka/minimal_audiobook_player</string>
     <string name="project_open_failed">No browser installed to open the project page.</string>
     <string name="settings_files_count">%1$d audio files in the library</string>

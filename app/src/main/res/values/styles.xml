@@ -162,16 +162,17 @@
         <item name="android:paddingEnd">4dp</item>
     </style>
 
-    <!-- Big round play/pause: icon only, no text. -->
+    <!-- Big round play/pause: outlined while idle, filled accent only when
+         normal speed is playing. The icon uses the same selected-state tint. -->
     <style name="PrimaryIconButton" parent="@android:style/Widget.Material.ImageButton">
-        <item name="android:background">@drawable/bg_button_accent</item>
+        <item name="android:background">@drawable/bg_button_fast</item>
+        <item name="android:tint">@color/ic_fast_tint</item>
         <item name="android:padding">20dp</item>
         <item name="android:scaleType">fitCenter</item>
         <item name="android:stateListAnimator">@null</item>
     </style>
 
-    <!-- Fast play: outlined when idle, filled accent while the fast speed is
-         the one playing (see drawable/bg_button_fast.xml). -->
+    <!-- Fast play uses the same selected-state background and icon tint. -->
     <style name="FastIconButton" parent="@android:style/Widget.Material.ImageButton">
         <item name="android:background">@drawable/bg_button_fast</item>
         <item name="android:padding">12dp</item>

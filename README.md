@@ -1,7 +1,7 @@
 # Minimal Audiobook Player
 
-A dependency-free Android audiobook player: **27 Java classes, no libraries at all**
-(no AndroidX, no Kotlin runtime, no image loaders), a **220 KB APK**, and a UI built
+A dependency-free Android audiobook player: **30 Java classes, no libraries at all**
+(no AndroidX, no Kotlin runtime, no image loaders), a **224 KB APK**, and a UI built
 for imprecise fingers on small, old phones.
 
 * **Android 7.0+** (`minSdk 24`), compiled and targeted against API 34.
@@ -12,11 +12,11 @@ for imprecise fingers on small, old phones.
 ## Install the test build
 
 ```
-artifacts/AudiobooksMinimalPlayer-1.5.0.apk
+artifacts/AudiobooksMinimalPlayer-1.6.0.apk
 ```
 
 ```bash
-adb install -r artifacts/AudiobooksMinimalPlayer-1.5.0.apk
+adb install -r artifacts/AudiobooksMinimalPlayer-1.6.0.apk
 ```
 
 Or copy the APK to the phone and open it (Android will ask to allow installing
@@ -34,7 +34,7 @@ decline, the app offers its own app-specific folder, which needs no permission.
 
 | Screen | Behaviour |
 |--------|-----------|
-| **All files** (tab 1) | One flat list of every audio file under the root folder, sorted naturally *ignoring folders*. Playback starts with the current file at the top; when it finishes it moves to the bottom and the next one rises. Optional discrete browsing moves the queue view independently and wraps around. |
+| **All files** (tab 1) | One flat list of every audio file under the root folder, sorted naturally *ignoring folders*. A folder name appears once as a delimiter before each contiguous folder group, with a rule after its last file—not repeated under every file. Playback starts with the current file at the top; when it finishes it moves to the bottom and the next one rises. Optional discrete browsing moves the queue view independently and wraps around. |
 | **Folders** (tab 2) | Folder explorer with sub-folders, per-folder file counts, breadcrumb path, and an up button. Each folder reopens at the last file you played in it. Subfolders have a separate trash button; confirmed deletion removes the folder and its contents. |
 | **Settings** (tab 3) | Rescan first, then the folder card: storage access (only while it is missing), one-tap **Music / Books / Downloads / SD card** folders, the built-in folder picker and the recent-folder list (tap to switch, trash to forget); then seek step 1–60 s, **discrete file-list scrolling**, "delete without confirmation", keep screen on, **volume keys seek while the screen is off**, clear all saved positions, about. The **version line is a link to the GitHub project** (opens the browser; the app itself still declares no internet permission). |
 
@@ -44,10 +44,11 @@ settings → all files, and folders → parent folder → all files.
 ### Discrete file-list scrolling
 
 The Settings checkbox is off by default, preserving the normal smooth ListView.
-When enabled, file rows have a uniform height and only complete rows are shown.
-A vertical swipe jumps by whole rows without a pixel scroll or fling; a short
-swipe moves one row, and a longer drag moves an integral number of rows. Swipe
-up to browse forward. Swipe down to browse backward: at the top, the last queue
+When enabled, file rows keep exactly the same 64 dp height as in smooth mode,
+folder delimiters use that height too, and only complete rows are shown. A
+vertical swipe jumps by whole rows without a pixel scroll or fling; rows change
+*while dragging* as each full row is crossed. A short swipe moves one row on
+release. Swipe up to browse forward. Swipe down to browse backward: at the top, the last queue
 item is inserted at the beginning, so previous tracks are immediately reachable.
 The list wraps at either end without changing the playing track. Starting or
 advancing playback re-anchors the current track at the top, like a virtual sheet
@@ -66,8 +67,7 @@ tabs stay next to the controls.
 2:00            10:00            -8:00      played · total · remaining
 ───●──────────────────────────────          seek bar, tap to jump
 
-[ 2–60 s ▶]     ( ▶ )  [▶▶]      [◀ 2–60 s]  seek pads · play · fast play
-                         x1.3                (fast play: chosen speed)
+[ 2–60 s ▶]   ( ▶ ) [▶▶ x1.3]  [◀ 2–60 s]  seek pads · equal play buttons
 [prev]  [- 10 s]  [+ 10 s]  [next]
 ```
 
@@ -76,16 +76,19 @@ tabs stay next to the controls.
   (the left one is mirrored). The pad shows the amount live and resets to
   "2–60 s" when released.
 * **Play/Pause** is icon-only and centred between the two pads.
-* **Fast play** sits right of the play button (double triangle, the chosen speed
-  underneath, default **x1.3**). The rules are the same for both buttons:
+* **Fast play** sits right of the play button in the same 88×68 dp frame
+  (double triangle with the chosen speed beside it, default **x1.3**). The
+  rules are the same for both buttons:
   * paused → the press starts playback **at that button's speed** (x1 for the
     plain button, the speed from Settings for the fast one);
   * playing at that speed → the press **pauses** (second press of the same
     button);
   * playing at the other speed → the press **switches the speed** and keeps
     playing.
-  The button whose speed is active shows the pause glyph, so it is always clear
-  which button will pause. The speed stays for the next chapter as well.
+  The button whose speed is actively playing is accent-filled and shows the
+  pause glyph; the inactive/paused buttons stay dark and outlined. This makes
+  both the active speed and the button that will pause clear at a glance. The
+  speed stays for the next chapter as well.
 * **The whole seek band is the slider.** The time labels above the bar are not
   dead space: a tap anywhere in that band lands on the same position as a tap on
   the bar below it, so the target is 90 dp tall without adding any height. A
@@ -190,13 +193,13 @@ app/src/main/java/io/github/yuki2ka/audiobookplayer/
   MainActivity.java            the single screen (1.4 kLOC)
   FolderPickerActivity.java    plain directory picker
   data/       Db, Prefs        SQLite positions + folder state, SharedPreferences
-  model/      AudioFile, FolderNode, ScanResult
+  model/      AudioFile, FileListRows, FolderNode, ScanResult
   playback/   PlayerEngine     one MediaPlayer, audio focus, wake lock
               PlayQueue        the rotating "All files" order
   scan/       Scanner, Library recursive scan on a worker thread
   ui/         AudioFileAdapter, FolderAdapter, PickerAdapter,
               FolderBrowser, SwipePager
-  util/       Fingerprint, NaturalSort, Storage, TimeFormat
+  util/       DiscreteDrag, Fingerprint, NaturalSort, Storage, TimeFormat
 app/src/main/res/              9 layouts (+ landscape), 26 vector/PNG assets
 tools/                         build, tests, resource checks
 docs/ARCHITECTURE.md           internals and design rationale

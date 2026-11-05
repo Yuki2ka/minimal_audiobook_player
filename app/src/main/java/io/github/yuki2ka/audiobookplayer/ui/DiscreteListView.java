@@ -9,21 +9,21 @@ import android.view.ViewGroup;
 import android.widget.ListView;
 
 import io.github.yuki2ka.audiobookplayer.R;
+import io.github.yuki2ka.audiobookplayer.util.DiscreteDrag;
 
 /**
  * The All-files ListView can switch to whole-row, no-fling scrolling. In that
- * mode a vertical swipe is converted to an integral number of row steps and
- * handed to the activity, which rotates the circular queue at either end.
- * Taps (including the per-row delete button) and horizontal page swipes are
- * left to their normal owners.
+ * mode each complete row crossed by the finger is applied immediately, and the
+ * activity rotates the circular queue at either end. Taps (including the
+ * per-row delete button) and horizontal page swipes are left to their owners.
  */
 public final class DiscreteListView extends ListView {
 
     public interface SwipeListener {
         /**
-         * Called after a vertical gesture. {@code direction} is {@link #FORWARD}
-         * when the finger moved up (toward later files), or {@link #BACKWARD}
-         * when it moved down (toward earlier files).
+         * Called for newly crossed rows during a vertical gesture, and for a
+         * short swipe on release. {@code direction} is {@link #FORWARD} when
+         * the finger moved up, or {@link #BACKWARD} when it moved down.
          */
         void onDiscreteSwipe(int direction, int steps);
     }
@@ -32,6 +32,7 @@ public final class DiscreteListView extends ListView {
     public static final int FORWARD = 1;
 
     private final int touchSlop;
+    private final DiscreteDrag discreteDrag = new DiscreteDrag();
     private final int defaultPaddingLeft;
     private final int defaultPaddingTop;
     private final int defaultPaddingRight;
@@ -76,6 +77,7 @@ public final class DiscreteListView extends ListView {
         trackingTouch = false;
         ignoreGesture = false;
         capturedSwipe = false;
+        discreteDrag.reset();
         setSmoothScrollbarEnabled(!enabled);
         setFastScrollEnabled(enabled ? false : defaultFastScroll);
         setOverScrollMode(enabled ? View.OVER_SCROLL_NEVER : defaultOverScrollMode);
@@ -129,6 +131,7 @@ public final class DiscreteListView extends ListView {
                 downY = event.getY();
                 trackingTouch = true;
                 capturedSwipe = false;
+                discreteDrag.reset();
                 ignoreGesture = startsOnInteractiveChild(event.getX(), event.getY());
                 return false;
 
@@ -168,21 +171,18 @@ public final class DiscreteListView extends ListView {
 
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_MOVE:
-                // Do not pass the drag to AbsListView: it would scroll by pixels
-                // and start a fling when the finger is released.
+                // Apply each newly crossed row now, not all of them on release.
+                // Do not pass the drag to AbsListView: it would also scroll by
+                // pixels and start a fling when the finger is released.
+                applyDelta(discreteDrag.update(event.getY() - downY, rowExtent()));
                 return true;
 
-            case MotionEvent.ACTION_UP: {
-                float dy = event.getY() - downY;
-                int direction = dy < 0f ? FORWARD : BACKWARD;
-                int extent = rowExtent();
-                int steps = Math.max(1, Math.round(Math.abs(dy) / (float) extent));
-                if (swipeListener != null) {
-                    swipeListener.onDiscreteSwipe(direction, steps);
-                }
+            case MotionEvent.ACTION_UP:
+                // finish() applies only the unreported remainder. It also keeps
+                // the useful short-swipe behaviour: one row even below rowExtent.
+                applyDelta(discreteDrag.finish(event.getY() - downY, rowExtent()));
                 resetGesture();
                 return true;
-            }
 
             case MotionEvent.ACTION_CANCEL:
                 resetGesture();
@@ -193,10 +193,19 @@ public final class DiscreteListView extends ListView {
         }
     }
 
+    private void applyDelta(int signedSteps) {
+        if (signedSteps == 0 || swipeListener == null) {
+            return;
+        }
+        swipeListener.onDiscreteSwipe(signedSteps > 0 ? FORWARD : BACKWARD,
+                Math.abs(signedSteps));
+    }
+
     private void resetGesture() {
         trackingTouch = false;
         ignoreGesture = false;
         capturedSwipe = false;
+        discreteDrag.reset();
     }
 
     private boolean startsOnInteractiveChild(float x, float y) {
@@ -254,10 +263,10 @@ public final class DiscreteListView extends ListView {
                 return extent;
             }
         }
-        // item_audio uses a 64 dp fixed content height in discrete mode and
-        // 2 dp top/bottom margins where the parent LayoutParams retain them.
-        return getResources().getDimensionPixelSize(R.dimen.row_min_height)
-                + Math.round(4f * getResources().getDisplayMetrics().density);
+        // AbsListView.LayoutParams do not retain the XML row margins. Using an
+        // imaginary +4 dp here made the first padding calculation disagree with
+        // the laid-out rows and could expose a clipped final row.
+        return getResources().getDimensionPixelSize(R.dimen.row_min_height);
     }
 
     private void updateDiscretePadding(int height) {

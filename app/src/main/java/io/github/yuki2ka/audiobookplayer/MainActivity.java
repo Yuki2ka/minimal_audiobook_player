@@ -103,7 +103,7 @@ public final class MainActivity extends Activity implements
     private Button btnForward;
     private Button btnPrev;
     private ImageButton btnPlay;
-    private ImageButton btnFastPlay;
+    private View btnFastPlay;
     private TextView fastSpeedLabel;
     private Button btnNext;
 
@@ -695,13 +695,11 @@ public final class MainActivity extends Activity implements
         btnFastPlay.setContentDescription(getString(playing && fast
                 ? R.string.pause
                 : R.string.play_fast_at, PlaybackSpeed.label(prefs.fastSpeedPercent())));
-        // The speed under the fast button lights up while that speed is the one
-        // playing; the glyph itself is tinted by ic_fast_tint.
-        fastSpeedLabel.setTextColor(getColor(playing && fast
-                ? R.color.accent : R.color.text_secondary));
+        // The fast icon and inline speed label duplicate their parent's
+        // selected state, so ic_fast_tint switches both to accent ink.
     }
 
-    /** Shows the configured fast speed under its button and in Settings. */
+    /** Shows the configured fast speed beside its icon and in Settings. */
     private void updateSpeedLabels() {
         String label = PlaybackSpeed.label(prefs.fastSpeedPercent());
         if (fastSpeedLabel != null) {
@@ -790,9 +788,11 @@ public final class MainActivity extends Activity implements
             }
             browser.revealFile(file.path);
         }
-        // The current file is always the first row of the "All files" page,
-        // regardless of the mode playback was started from.
+        // The current file is always the first audio row of the "All files"
+        // page (immediately below its folder delimiter), regardless of the
+        // mode playback was started from.
         library.queue().rotateTo(file.path);
+        adapter.refreshFileOrder();
         prefs.setLastFile(file.path);
         prefs.setLastMode(mode);
 
@@ -885,35 +885,41 @@ public final class MainActivity extends Activity implements
      * reachable. Playback itself is unchanged by browsing.
      */
     private void scrollDiscreteFileList(int direction, int steps) {
-        int count = library.queue().size();
-        if (!prefs.discreteFileScroll() || count < 2) {
+        int fileCount = library.queue().size();
+        if (!prefs.discreteFileScroll() || fileCount < 2 || adapter.getCount() == 0) {
             return;
         }
 
-        int top = TimeFormat.clamp(listAll.getFirstVisiblePosition(), 0, count - 1);
+        int top = TimeFormat.clamp(listAll.getFirstVisiblePosition(), 0, adapter.getCount() - 1);
         int visibleRows = Math.max(1, listAll.getChildCount());
         boolean rotated = false;
         int stepCount = Math.max(1, steps);
         for (int i = 0; i < stepCount; i++) {
+            int rowCount = adapter.getCount();
+            top = TimeFormat.clamp(top, 0, rowCount - 1);
             if (direction == DiscreteListView.FORWARD) {
-                if (top + visibleRows < count) {
+                if (top + visibleRows < rowCount) {
                     top++;
                 } else {
                     // Keep the top index: after moving the head to the tail,
                     // this exposes the next row and wraps cleanly at the end.
                     library.queue().rotateViewForward();
                     rotated = true;
+                    // Delimiter count can change when a different folder moves
+                    // to the head, so subsequent steps use fresh row positions.
+                    adapter.refreshFileOrder();
                 }
             } else if (top > 0) {
                 top--;
             } else {
                 library.queue().rotateViewBackward();
                 rotated = true;
+                adapter.refreshFileOrder();
             }
         }
 
         if (rotated) {
-            adapter.notifyDataSetChanged();
+            top = TimeFormat.clamp(top, 0, adapter.getCount() - 1);
         }
         listAll.setSelectionFromTop(top, 0);
     }
@@ -1283,7 +1289,7 @@ public final class MainActivity extends Activity implements
         db.deletePosition(file.fingerprint(), file.path);
         library.removePosition(file.path);
         library.removeFile(file);
-        adapter.notifyDataSetChanged();
+        adapter.refreshFileOrder();
         browser.refresh();
         Toast.makeText(this, getString(R.string.deleted, file.name), Toast.LENGTH_SHORT).show();
         startScan(false);
@@ -1387,7 +1393,7 @@ public final class MainActivity extends Activity implements
             updatePlayButtons();
             updateControls();
         }
-        adapter.notifyDataSetChanged();
+        adapter.refreshFileOrder();
         browser.refresh();
         Toast.makeText(this, getString(R.string.deleted_folder, folder.name),
                 Toast.LENGTH_SHORT).show();
@@ -1657,7 +1663,7 @@ public final class MainActivity extends Activity implements
         if (enabled && current != null) {
             // Rebase the virtual sheet on the track that is actually playing.
             library.queue().rotateTo(current.path);
-            adapter.notifyDataSetChanged();
+            adapter.refreshFileOrder();
         }
         listAll.refreshDiscreteLayout();
         listAll.post(new Runnable() {

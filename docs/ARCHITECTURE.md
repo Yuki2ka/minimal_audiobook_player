@@ -122,17 +122,25 @@ The list is ordered naturally by file name, across folders. Rotation rules:
   the queue head in either direction without changing the playing file. At the
   top, a backward swipe prepends the last item; at the bottom, a forward swipe
   moves the head to the tail. A playback selection/advance re-anchors the
-  current track at row zero again.
+  current track's folder group at the top again.
+
+`model/FileListRows` maps the queue to presentation rows without changing its
+order. A folder delimiter precedes each contiguous parent-folder run, and the
+last file in that run draws the closing rule. File subtitles therefore show
+only size/resume information instead of repeating the folder name.
 
 `ui/DiscreteListView` owns vertical swipe detection only while the setting is
-on. It bypasses ListView's pixel drag/fling, gives the adapter fixed-height
-single-line rows, and adjusts the bottom padding to an integer number of rows.
-A short swipe is one row; longer drags snap to a whole-row count. Horizontal
-swipes still belong to `SwipePager`, and taps on the row/delete button stay
-normal. The activity applies the row steps and queue rotations on the main
-thread.
+on. It bypasses ListView's pixel drag/fling and adjusts the bottom padding to
+an integer number of rows. File rows are fixed at 64 dp in both smooth and
+discrete modes; delimiters expand to 64 dp in discrete mode so every row has
+the same extent. `util/DiscreteDrag` emits only newly crossed row deltas while
+the finger moves (including reversals), and release applies no delta twice. A
+short swipe still moves one row. Horizontal swipes belong to `SwipePager`, and
+taps on the row/delete button stay normal. The activity applies the row steps
+and queue rotations on the main thread.
 
-`PlayQueue` is pure Java (no Android imports) and is covered by the JVM tests.
+`PlayQueue`, `FileListRows` and `DiscreteDrag` are pure Java (no Android
+imports) and are covered by the JVM tests.
 
 ## Scanning (`Scanner`, `Library`)
 

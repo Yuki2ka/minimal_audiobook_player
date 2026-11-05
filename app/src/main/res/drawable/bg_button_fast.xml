@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Fast play button, idle: outlined like the seek pads so the accented plain
-     play button in the middle stays the primary control. Active (playing at
-     the fast speed): filled accent, matching the play/pause button. -->
+<!-- Shared normal/fast play background: outlined while idle or paused, filled
+     accent only while this button's speed is the active playing speed. -->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
     android:color="@color/ripple">
     <item>
