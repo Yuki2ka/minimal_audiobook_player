@@ -1,7 +1,7 @@
 # Minimal Audiobook Player
 
-A dependency-free Android audiobook player: **26 Java classes, no libraries at all**
-(no AndroidX, no Kotlin runtime, no image loaders), a **196 KB APK**, and a UI built
+A dependency-free Android audiobook player: **27 Java classes, no libraries at all**
+(no AndroidX, no Kotlin runtime, no image loaders), a **220 KB APK**, and a UI built
 for imprecise fingers on small, old phones.
 
 * **Android 7.0+** (`minSdk 24`), compiled and targeted against API 34.
@@ -12,11 +12,11 @@ for imprecise fingers on small, old phones.
 ## Install the test build
 
 ```
-artifacts/AudiobooksMinimalPlayer-1.4.0.apk
+artifacts/AudiobooksMinimalPlayer-1.5.0.apk
 ```
 
 ```bash
-adb install -r artifacts/AudiobooksMinimalPlayer-1.4.0.apk
+adb install -r artifacts/AudiobooksMinimalPlayer-1.5.0.apk
 ```
 
 Or copy the APK to the phone and open it (Android will ask to allow installing
@@ -34,12 +34,24 @@ decline, the app offers its own app-specific folder, which needs no permission.
 
 | Screen | Behaviour |
 |--------|-----------|
-| **All files** (tab 1) | One flat list of every audio file under the root folder, sorted naturally *ignoring folders*. The file that is playing is pinned to the top: when a file finishes it moves to the bottom and the next one rises to the top. |
-| **Folders** (tab 2) | Folder explorer with sub-folders, per-folder file counts, breadcrumb path, and an up button. Each folder reopens at the last file you played in it. |
-| **Settings** (tab 3) | Rescan first, then the folder card: storage access (only while it is missing), one-tap **Music / Books / Downloads / SD card** folders, the built-in folder picker and the recent-folder list (tap to switch, trash to forget); then seek step 1–60 s, "delete without confirmation", keep screen on, **volume keys seek while the screen is off**, clear all saved positions, about. The **version line is a link to the GitHub project** (opens the browser; the app itself still declares no internet permission). |
+| **All files** (tab 1) | One flat list of every audio file under the root folder, sorted naturally *ignoring folders*. Playback starts with the current file at the top; when it finishes it moves to the bottom and the next one rises. Optional discrete browsing moves the queue view independently and wraps around. |
+| **Folders** (tab 2) | Folder explorer with sub-folders, per-folder file counts, breadcrumb path, and an up button. Each folder reopens at the last file you played in it. Subfolders have a separate trash button; confirmed deletion removes the folder and its contents. |
+| **Settings** (tab 3) | Rescan first, then the folder card: storage access (only while it is missing), one-tap **Music / Books / Downloads / SD card** folders, the built-in folder picker and the recent-folder list (tap to switch, trash to forget); then seek step 1–60 s, **discrete file-list scrolling**, "delete without confirmation", keep screen on, **volume keys seek while the screen is off**, clear all saved positions, about. The **version line is a link to the GitHub project** (opens the browser; the app itself still declares no internet permission). |
 
 Swipe left/right to change pages; the tab bar does the same. Back goes
 settings → all files, and folders → parent folder → all files.
+
+### Discrete file-list scrolling
+
+The Settings checkbox is off by default, preserving the normal smooth ListView.
+When enabled, file rows have a uniform height and only complete rows are shown.
+A vertical swipe jumps by whole rows without a pixel scroll or fling; a short
+swipe moves one row, and a longer drag moves an integral number of rows. Swipe
+up to browse forward. Swipe down to browse backward: at the top, the last queue
+item is inserted at the beginning, so previous tracks are immediately reachable.
+The list wraps at either end without changing the playing track. Starting or
+advancing playback re-anchors the current track at the top, like a virtual sheet
+of files.
 
 ### Layout
 
@@ -83,9 +95,11 @@ tabs stay next to the controls.
 * The file name is deliberately not repeated here: the playing file is pinned to
   the top of the All-files list.
 
-Every row of both lists is at least 64 dp tall and the delete button is its own
-48×48 dp target on the right, so tapping a row to play almost never deletes it.
-Deleting asks yes/no unless you switch the confirmation off in settings.
+Audio-file and subfolder rows are at least 64 dp tall, and each delete button
+is its own 48×48 dp target, set back from the right edge. Tapping a row to play
+or open it therefore almost never deletes it. Deleting asks yes/no unless you
+switch the confirmation off in Settings; deleting a folder removes its contents
+too. The parent-navigation row has no delete button.
 
 ## Volume keys in the dark
 

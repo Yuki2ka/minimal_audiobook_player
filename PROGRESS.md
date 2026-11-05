@@ -5,7 +5,7 @@ Next-step pointer lives in [TASKS.md](TASKS.md).
 
 Project: **Minimal Audiobook Player** — a dependency-free Android audiobook player
 (minSdk 24 / Android 7.0, targetSdk 34), package `io.github.yuki2ka.audiobookplayer`,
-version 1.4.0.
+version 1.5.0.
 
 ## Milestones
 
@@ -31,16 +31,17 @@ version 1.4.0.
 | 17 | Volume-key regression fix (1.2.1): session callback + release-driven gestures | ✅ |
 | 18 | 1.3.0: 2x volume ramp, landscape tabs on the right, seek band, new APK name, project link | ✅ |
 | 19 | 1.4.0: fast play button + speed setting (x1.1–x2.0, default x1.3) | ✅ |
+| 20 | 1.5.0: discrete whole-row circular browsing + folder-row deletion | ✅ |
 
 ## Verification (last run)
 
 | Check | Result |
 |-------|--------|
-| `tools/run-tests.sh` | **519 assertions, 0 failed** (locale forced to UTF-8) |
-| `tools/check-resources.py` | 84 ids, 10 layouts, 119 strings, 30 drawables — all references resolve |
-| `tools/build-apk.sh` | `artifacts/AudiobooksMinimalPlayer-1.4.0.apk`, **208 KB** |
-| Manifest / badging | package correct, versionCode 6, versionName 1.4.0, **sdkVersion 24**, target 34, launcher `MainActivity` |
-| DEX | dex 037, 116,752 B; no AndroidX, no Kotlin, no `java.time` / `java.nio.file` / streams / `Optional` references (API 24 safe) |
+| `tools/run-tests.sh` | **525 assertions, 0 failed** (locale forced to UTF-8) |
+| `tools/check-resources.py` | 87 ids, 10 layouts, 126 strings, 30 drawables — all references resolve |
+| `tools/build-apk.sh` | `artifacts/AudiobooksMinimalPlayer-1.5.0.apk`, **220 KB** |
+| Manifest / badging | package correct, versionCode 7, versionName 1.5.0, **sdkVersion 24**, target 34, launcher `MainActivity` |
+| DEX | dex 037, 133,616 B; no AndroidX, no Kotlin, no `java.time` / `java.nio.file` / streams / `Optional` references (API 24 safe) |
 | Signature | `apksigner verify`: v2 + v3 true, `CN=Android Debug` (RSA-2048) |
 | Alignment | `zipalign -c -v -p 4`: successful |
 
@@ -48,7 +49,7 @@ Reproduce:
 
 ```bash
 JAVA_HOME=/tmp/toolchain/jdk-17.0.20.1+1 ANDROID_HOME=/tmp/sdk ./tools/build-apk.sh
-./tools/run-tests.sh
+JAVA_HOME=/tmp/toolchain/jdk-17.0.20.1+1 ./tools/run-tests.sh
 ```
 
 ## Design decisions

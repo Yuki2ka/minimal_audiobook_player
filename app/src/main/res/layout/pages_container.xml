@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <ListView
+        <io.github.yuki2ka.audiobookplayer.ui.DiscreteListView
             android:id="@+id/list_all"
             android:layout_width="match_parent"
             android:layout_height="match_parent"

@@ -23,6 +23,7 @@ public final class Prefs {
     private static final String KEY_NO_CONFIRM = "delete_without_confirm";
     private static final String KEY_KEEP_AWAKE = "keep_screen_on";
     private static final String KEY_VOLUME_SEEK = "volume_keys_seek";
+    private static final String KEY_DISCRETE_FILE_SCROLL = "discrete_file_scroll";
     private static final String KEY_LAST_FILE = "last_file";
     private static final String KEY_LAST_MODE = "last_mode";
     private static final String KEY_LAST_FOLDER = "last_folder";
@@ -141,6 +142,19 @@ public final class Prefs {
 
     public void setVolumeKeysSeek(boolean value) {
         prefs.edit().putBoolean(KEY_VOLUME_SEEK, value).apply();
+    }
+
+    /**
+     * Scroll the unified file list one whole row per vertical swipe, with no
+     * pixel scrolling or fling. The circular queue can be browsed in either
+     * direction without reaching a hard end.
+     */
+    public boolean discreteFileScroll() {
+        return prefs.getBoolean(KEY_DISCRETE_FILE_SCROLL, false);
+    }
+
+    public void setDiscreteFileScroll(boolean value) {
+        prefs.edit().putBoolean(KEY_DISCRETE_FILE_SCROLL, value).apply();
     }
 
     public boolean keepScreenOn() {

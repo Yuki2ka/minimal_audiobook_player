@@ -29,6 +29,8 @@ public final class FolderAdapter extends BaseAdapter {
     public interface Callbacks {
         void onFolderClick(FolderNode folder);
 
+        void onFolderDelete(FolderNode folder);
+
         void onParentClick();
 
         void onFolderFileClick(AudioFile file);
@@ -155,6 +157,14 @@ public final class FolderAdapter extends BaseAdapter {
                     }
                 }
             });
+            created.delete.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (!created.parentRow && created.folder != null) {
+                        callbacks.onFolderDelete(created.folder);
+                    }
+                }
+            });
             holder = created;
         } else {
             holder = (FolderHolder) convertView.getTag();
@@ -180,6 +190,15 @@ public final class FolderAdapter extends BaseAdapter {
             holder.subtitle.setVisibility(View.VISIBLE);
             holder.icon.setImageResource(R.drawable.ic_folder);
             holder.icon.setImageTintList(ColorStateList.valueOf(context.getColor(R.color.accent)));
+        }
+        // Folder browsing opens by tapping the row itself; the chevron is
+        // redundant here. Keep it available for PickerAdapter's navigation rows.
+        holder.chevron.setVisibility(View.GONE);
+        boolean showFolderDelete = showDelete && !holder.parentRow;
+        holder.delete.setVisibility(showFolderDelete ? View.VISIBLE : View.GONE);
+        if (showFolderDelete && holder.folder != null) {
+            holder.delete.setContentDescription(
+                    context.getString(R.string.delete_folder) + ": " + holder.folder.name);
         }
         return convertView;
     }
@@ -237,6 +256,8 @@ public final class FolderAdapter extends BaseAdapter {
         final ImageView icon;
         final TextView title;
         final TextView subtitle;
+        final ImageView chevron;
+        final ImageButton delete;
         FolderNode folder;
         boolean parentRow;
 
@@ -245,6 +266,8 @@ public final class FolderAdapter extends BaseAdapter {
             icon = view.findViewById(R.id.row_icon);
             title = view.findViewById(R.id.row_title);
             subtitle = view.findViewById(R.id.row_subtitle);
+            chevron = view.findViewById(R.id.row_chevron);
+            delete = view.findViewById(R.id.row_delete);
         }
     }
 

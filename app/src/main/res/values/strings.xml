@@ -63,6 +63,11 @@
 
     <!-- Delete -->
     <string name="delete_file">Delete</string>
+    <string name="delete_folder">Delete folder</string>
+    <string name="delete_folder_title">Delete folder and contents?</string>
+    <string name="delete_folder_message">Permanently delete %1$s and everything inside it from this device?</string>
+    <string name="deleted_folder">Deleted folder %1$s</string>
+    <string name="delete_folder_failed">Could not delete the folder safely. Check storage access; a protected item or symbolic link may prevent deletion.</string>
     <string name="delete_title">Delete file?</string>
     <string name="delete_message">Permanently delete\n%1$s\nfrom this device?</string>
     <string name="delete_message_playing">Playback will stop.\n\nPermanently delete\n%1$s\nfrom this device?</string>
@@ -92,11 +97,13 @@
     <string name="settings_speed">Fast play speed</string>
     <string name="settings_speed_hint">The button with the double triangle plays at this speed; the plain play button always plays at x1. Pressing the other button while playing switches the speed without stopping.</string>
     <string name="settings_delete_no_confirm">Delete without confirmation</string>
-    <string name="settings_delete_no_confirm_hint">The trash button removes files immediately. There is no undo.</string>
+    <string name="settings_delete_no_confirm_hint">Trash buttons remove files or folders and their contents immediately. There is no undo.</string>
     <string name="settings_keep_awake">Keep screen on while playing</string>
     <string name="settings_keep_awake_hint">Only while audio is playing.</string>
     <string name="settings_volume_keys">Volume keys seek (screen off)</string>
     <string name="settings_volume_keys_hint">Short press = \u2212 / + step, like the pads. Hold = still changes the volume. Screen on: keys work normally.</string>
+    <string name="settings_discrete_scroll">Discrete file-list scrolling</string>
+    <string name="settings_discrete_scroll_hint">Swipe by whole rows without fling. Swipe down to browse earlier tracks; the list wraps around.</string>
     <string name="settings_positions">Playback positions</string>
     <string name="settings_positions_hint">Saved for every file and removed automatically once a file is finished.</string>
     <string name="clear_positions">Clear all saved positions</string>
