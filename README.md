@@ -1,7 +1,7 @@
 # Minimal Audiobook Player
 
 A dependency-free Android audiobook player: **30 Java classes, no libraries at all**
-(no AndroidX, no Kotlin runtime, no image loaders), a **224 KB APK**, and a UI built
+(no AndroidX, no Kotlin runtime, no image loaders), a **228 KB APK**, and a UI built
 for imprecise fingers on small, old phones.
 
 * **Android 7.0+** (`minSdk 24`), compiled and targeted against API 34.
@@ -12,11 +12,11 @@ for imprecise fingers on small, old phones.
 ## Install the test build
 
 ```
-artifacts/AudiobooksMinimalPlayer-1.7.1.apk
+artifacts/AudiobooksMinimalPlayer-1.7.2.apk
 ```
 
 ```bash
-adb install -r artifacts/AudiobooksMinimalPlayer-1.7.1.apk
+adb install -r artifacts/AudiobooksMinimalPlayer-1.7.2.apk
 ```
 
 Or copy the APK to the phone and open it (Android will ask to allow installing
@@ -34,7 +34,7 @@ decline, the app offers its own app-specific folder, which needs no permission.
 
 | Screen | Behaviour |
 |--------|-----------|
-| **All files** (tab 1) | One flat list of every audio file under the root folder, sorted naturally *ignoring folders*. A folder name appears once as a delimiter before each contiguous folder group, with a rule after its last file—not repeated under every file. Playback starts with the current file at the top; when it finishes it moves to the bottom and the next one rises. Optional discrete browsing moves the queue view independently and wraps around. |
+| **All files** (tab 1) | The library drawn as one folder tree: a line with the folder name opens each folder (indented by its depth), then its sub-folders, then its own files, then a nameless rule closes it. Folder names are never repeated under every file, and chapters of one book never interleave with another folder's. Playback puts the current file at the top (the line naming its folder stays directly above it when it is the folder's first file); when it finishes the next file rises to the top. Optional discrete browsing moves the queue view independently and wraps around. |
 | **Folders** (tab 2) | Folder explorer with sub-folders, per-folder file counts, breadcrumb path, and an up button. Each folder reopens at the last file you played in it. Subfolders have a separate trash button; confirmed deletion removes the folder and its contents. |
 | **Settings** (tab 3) | Rescan first, then the folder card: storage access (only while it is missing), one-tap **Music / Books / Downloads / SD card** folders, the built-in folder picker and the recent-folder list (tap to switch, trash to forget); then seek step 1–60 s, **discrete file-list scrolling**, "delete without confirmation", keep screen on, **volume keys seek while the screen is off**, clear all saved positions, about. The **version line is a link to the GitHub project** (opens the browser; the app itself still declares no internet permission). |
 
@@ -46,7 +46,7 @@ settings → all files, and folders → parent folder → all files.
 The Settings checkbox is off by default, preserving the normal smooth ListView.
 In smooth mode a file row grows with its text (at least 60 dp): a long name can
 wrap to two lines and the size / saved-position line is never clipped. When
-discrete browsing is enabled, every row — file or folder delimiter — uses one
+discrete browsing is enabled, every row — file or folder separator — uses one
 exact height, **measured from a one-line file row at the current font size** and
 floored at 60 dp. That is the same height a smooth row uses, so discrete mode
 does not add extra empty space between files; large system text still gets the
@@ -182,7 +182,7 @@ JAVA_HOME=/path/to/jdk-17 ANDROID_HOME=/path/to/sdk ./tools/build-apk.sh
 ### Tests and static checks
 
 ```bash
-./tools/run-tests.sh          # 145 plain-JVM assertions, no JUnit needed
+./tools/run-tests.sh          # 601 plain-JVM assertions, no JUnit needed
 python3 tools/check-resources.py
 ```
 
@@ -203,7 +203,7 @@ app/src/main/java/io/github/yuki2ka/audiobookplayer/
   MainActivity.java            the single screen (1.4 kLOC)
   FolderPickerActivity.java    plain directory picker
   data/       Db, Prefs        SQLite positions + folder state, SharedPreferences
-  model/      AudioFile, FileListRows, FolderNode, ScanResult
+  model/      AudioFile, QueueEntry, TreeOrder, FileListRows, FolderNode
   playback/   PlayerEngine     one MediaPlayer, audio focus, wake lock
               PlayQueue        the rotating "All files" order
   scan/       Scanner, Library recursive scan on a worker thread

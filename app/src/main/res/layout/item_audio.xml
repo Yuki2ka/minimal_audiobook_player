@@ -5,8 +5,8 @@
      into a fixed box. Discrete mode sets this root to one exact, MEASURED
      height instead (see AudioFileAdapter / DiscreteListView) so its gaps stay
      the same as in smooth mode.
-     The closing rule of a flat-list folder group is overlaid at the bottom, so
-     it never takes height away from the text. -->
+     Folder groups are delimited by the separate item_folder_delimiter rows, so
+     nothing is drawn on top of a file row. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/row_root"
     android:layout_width="match_parent"
@@ -81,14 +81,4 @@
             android:src="@drawable/ic_trash"
             android:tint="@color/danger" />
     </LinearLayout>
-
-    <!-- Shown only on the final file in a flat-list folder group. -->
-    <View
-        android:id="@+id/row_group_end"
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_gravity="bottom"
-        android:background="@color/divider"
-        android:importantForAccessibility="no"
-        android:visibility="gone" />
 </FrameLayout>

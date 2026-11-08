@@ -8,7 +8,10 @@ public final class ScanResult {
 
     public final String root;
     public final FolderNode rootNode;
-    /** Every audio file, naturally sorted, ignoring the folder structure. */
+    /**
+     * Every audio file in unified display order: the depth-first folder tree
+     * walk (see {@link TreeOrder}), not a flat name sort.
+     */
     public final ArrayList<AudioFile> allFiles;
     public final HashMap<String, FolderNode> nodes;
     /** Null when the scan succeeded. */

@@ -5,7 +5,7 @@ Next-step pointer lives in [TASKS.md](TASKS.md).
 
 Project: **Minimal Audiobook Player** — a dependency-free Android audiobook player
 (minSdk 24 / Android 7.0, targetSdk 34), package `io.github.yuki2ka.audiobookplayer`,
-version 1.7.1.
+version 1.7.2.
 
 ## Milestones
 
@@ -35,25 +35,31 @@ version 1.7.1.
 | 21 | 1.6.0: folder delimiters, equal rows, live drags, equal/highlighted speed buttons | ✅ built |
 | 22 | 1.7.0: readable file rows (wrap / font-scaled discrete height) + speed under the glyph | ✅ built |
 | 23 | 1.7.1: compact gaps shared by smooth and discrete rows (measured one-line height) | ✅ built |
+| 24 | 1.7.2: All-files list is a real folder tree again (name / bare-line separators, tree order, rotation of whole rows) | ✅ built |
 
 ## Verification (last run)
 
 | Check | Result |
 |-------|--------|
-| `tools/run-tests.sh` | **560 assertions, 0 failed** (locale forced to UTF-8) |
-| `tools/check-resources.py` | 90 ids, 11 layouts, 124 strings, 31 drawables — all references resolve, plus the file-row / speed-label / row-spacing guards |
+| `tools/run-tests.sh` | **601 assertions, 0 failed** (locale forced to UTF-8) |
+| `tools/check-resources.py` | 91 ids, 11 layouts, 125 strings, 31 drawables — all references resolve, plus the file-row / speed-label / row-spacing / folder-tree guards |
 | Full app Java compilation | Passed against an Android boot classpath, including the modified adapters / list view |
-| `tools/build-apk.sh` | `artifacts/AudiobooksMinimalPlayer-1.7.1.apk`, **224 KB** |
-| Manifest / badging | package correct, versionCode 10, versionName 1.7.1, **sdkVersion 24**, target 34, launcher `MainActivity` |
+| `tools/build-apk.sh` | `artifacts/AudiobooksMinimalPlayer-1.7.2.apk`, **228 KB** |
+| Manifest / badging | package correct, versionCode 11, versionName 1.7.2, **sdkVersion 24**, target 34, launcher `MainActivity` |
 | DEX | `classes.dex` packaged by D8 with `--min-api 24`; no AndroidX or Kotlin runtime |
 | Signature | `apksigner verify`: v2 + v3 true, `CN=Android Debug` (RSA-2048) |
-| Alignment | `zipalign -c -v -p 4`: successful |
+| Alignment | every entry's data 4-byte aligned (`tools/zipalign.py` verifies it) |
 
 Reproduce:
 
 ```bash
-JAVA_HOME=/tmp/toolchain/jdk-17.0.20.1+1 ANDROID_HOME=/tmp/sdk ./tools/build-apk.sh
-JAVA_HOME=/tmp/toolchain/jdk-17.0.20.1+1 ./tools/run-tests.sh
+JAVA_HOME=/path/to/jdk-17 ANDROID_HOME=/path/to/sdk ./tools/build-apk.sh
+JAVA_HOME=/path/to/jdk-17 ./tools/run-tests.sh
+# Sandbox build (runtime-only JDK + tool jars, no Gradle, no native build-tools):
+JAVA_HOME=/tmp/toolchain/jdk/jdk4py/java-runtime ANDROID_HOME=/tmp/sdk \
+  AAPT2=/tmp/toolchain/aapt2/package/bin/x64/linux/aapt2 \
+  BUILD_TOOLS=/tmp/sdk/build-tools-34 PLATFORM_JAR=/tmp/sdk/platforms/android-34/android.jar \
+  ./tools/build-apk.sh
 ```
 
 ## Design decisions
@@ -187,6 +193,38 @@ JAVA_HOME=/tmp/toolchain/jdk-17.0.20.1+1 ./tools/run-tests.sh
   zipalign and v2 + v3 signing all pass.
 - The `64 sp` discrete extent was replaced in 1.7.1: it grew with the font
   scale and made the gaps between discrete rows much larger than in smooth mode.
+
+## 1.7.2 changes (All-files list is a folder tree again)
+
+- **Sorted as a tree, not as a flat list.** `Scanner` used to sort every file by
+  name across folders (`Collections.sort(allFiles, FILE_COMPARATOR)`), so a
+  book's chapters interleaved with another folder's files and the "folder
+  groups" of 1.6.0/1.7.x were really just name runs. `model/TreeOrder` now walks
+  the scanned tree depth first — folder name row, sub-folders, the folder's own
+  files, closing row — and `ScanResult.allFiles` is that order.
+- **Two separators per folder.** An opening row shows the folder icon, its name
+  and a rule to the right; a closing row is only the rule, no name. The whole
+  row is indented by its nesting depth (`folder_indent`, 14 dp per level), so a
+  sub-folder starts one step right of its parent's name. Folders without any
+  audio (covers/notes, or a folder whose last file was just deleted) get no
+  separators at all.
+- **Rotation moves files and separators in one list.** `PlayQueue` now holds
+  `model/QueueEntry` rows (file, opening row, closing row) instead of plain
+  files, so a tap, "next"/"previous", and discrete browsing rotate the same
+  ordered rows — the tree order is never re-derived or re-sorted mid-session.
+  `FileListRows` exposes those rows 1:1 to `AudioFileAdapter` (a separator is
+  simply not clickable), and the old `row_group_end` overlay is gone because a
+  folder is closed by its own row.
+- **The playing file stays on top.** When it is its folder's first file, the
+  rows that name the folder (and its parents) lead it, exactly like 1.4.0;
+  otherwise the file itself is the head and its folder's closing line sits right
+  below it (the name reappears when the ring wraps). The activity scrolls to the
+  first audio row rather than row 0.
+- Verified: 601 assertions (tree order, rotation-is-a-rotation of the tree,
+  folder-shaped fixtures for a real library), resource check with new
+  folder-tree guards, full app compilation, D8 `--min-api 24`, 4-byte aligned
+  entries, v2 + v3 signature — `AudiobooksMinimalPlayer-1.7.2.apk`, 228 KB,
+  versionCode 11.
 
 ## 1.7.1 changes (compact list spacing)
 

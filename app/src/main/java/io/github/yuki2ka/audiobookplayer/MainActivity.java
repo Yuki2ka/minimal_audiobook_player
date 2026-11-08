@@ -196,10 +196,10 @@ public final class MainActivity extends Activity implements
         wireSettings();
         wirePermissionCard();
 
-        adapter = new AudioFileAdapter(this, this, true);
+        adapter = new AudioFileAdapter(this, this);
         adapter.setDiscreteMode(prefs.discreteFileScroll());
         adapter.setPositions(library.positions());
-        adapter.setFiles(library.files());
+        adapter.setEntries(library.entries());
         listAll.setAdapter(adapter);
         listAll.setEmptyView(emptyAll);
         listAll.setSwipeListener(new DiscreteListView.SwipeListener() {
@@ -811,6 +811,7 @@ public final class MainActivity extends Activity implements
         if (prefs.discreteFileScroll()) {
             // Playback has its own virtual sheet: every newly selected track
             // starts at the first row, even after the user browsed elsewhere.
+            // The folder separator that names the track's folder stays above it.
             listAll.setSelectionFromTop(0, 0);
         }
         engine.open(file.path, startAt, true);
@@ -850,7 +851,7 @@ public final class MainActivity extends Activity implements
         if (next != null) {
             current = null;
             playFile(next, queueMode == Prefs.MODE_FOLDER ? Prefs.MODE_FOLDER : Prefs.MODE_UNIFIED);
-            listAll.setSelection(0);
+            revealPlayingRow();
         }
     }
 
@@ -876,7 +877,7 @@ public final class MainActivity extends Activity implements
         if (previous != null) {
             current = null;
             playFile(previous, queueMode == Prefs.MODE_FOLDER ? Prefs.MODE_FOLDER : Prefs.MODE_UNIFIED);
-            listAll.setSelection(0);
+            revealPlayingRow();
         }
     }
 
@@ -888,7 +889,7 @@ public final class MainActivity extends Activity implements
      * reachable. Playback itself is unchanged by browsing.
      */
     private void scrollDiscreteFileList(int direction, int steps) {
-        int fileCount = library.queue().size();
+        int fileCount = library.queue().fileCount();
         if (!prefs.discreteFileScroll() || fileCount < 2 || adapter.getCount() == 0) {
             return;
         }
@@ -904,12 +905,11 @@ public final class MainActivity extends Activity implements
                 if (top + visibleRows < rowCount) {
                     top++;
                 } else {
-                    // Keep the top index: after moving the head to the tail,
-                    // this exposes the next row and wraps cleanly at the end.
+                    // Keep the top index: after moving the first row to the
+                    // tail, this exposes the next row and wraps cleanly at the
+                    // end. Files and folder separators move in the same way.
                     library.queue().rotateViewForward();
                     rotated = true;
-                    // Delimiter count can change when a different folder moves
-                    // to the head, so subsequent steps use fresh row positions.
                     adapter.refreshFileOrder();
                 }
             } else if (top > 0) {
@@ -945,7 +945,7 @@ public final class MainActivity extends Activity implements
             current = null;
             playFile(next, queueMode);
             if (queueMode == Prefs.MODE_UNIFIED) {
-                listAll.setSelection(0);
+                revealPlayingRow();
             }
         } else {
             // End of the queue: keep the track loaded (Play restarts it).
@@ -1006,7 +1006,18 @@ public final class MainActivity extends Activity implements
     public void onFileClick(AudioFile file) {
         playFile(file, Prefs.MODE_UNIFIED);
         adapter.notifyDataSetChanged();
-        listAll.setSelection(0);
+        revealPlayingRow();
+    }
+
+    /**
+     * Scrolls the playing file's row into view. A rotated list can begin with the
+     * separator of the folder the track lives in, so the row is not always 0.
+     */
+    private void revealPlayingRow() {
+        int row = library.queue().indexOf(current == null ? null : current.path);
+        // Not row 0: a rotated list starts with the separator naming the folder,
+        // and the playing file is the first row below it.
+        listAll.setSelection(row >= 0 ? adapter.firstFileRow() : 0);
     }
 
     @Override
@@ -1081,7 +1092,7 @@ public final class MainActivity extends Activity implements
     }
 
     private void afterLibraryChanged() {
-        adapter.setFiles(library.files());
+        adapter.setEntries(library.entries());
         adapter.setPositions(library.positions());
         adapter.notifyDataSetChanged();
 
@@ -1190,7 +1201,7 @@ public final class MainActivity extends Activity implements
         if (library.isScanning()) {
             scanSpinner.setVisibility(View.VISIBLE);
             emptyTitle.setText(R.string.scanning);
-            emptyBody.setText(getString(R.string.scanning_count, library.files().size()));
+            emptyBody.setText(getString(R.string.scanning_count, library.fileCount()));
             emptySettings.setVisibility(View.GONE);
             return;
         }
@@ -1727,7 +1738,7 @@ public final class MainActivity extends Activity implements
             settingsLibraryInfo.setText(R.string.scanning);
         } else {
             settingsLibraryInfo.setText(getString(R.string.settings_files_count,
-                    library.files().size()));
+                    library.fileCount()));
         }
         bindingSettings = false;
         updateStepLabels();

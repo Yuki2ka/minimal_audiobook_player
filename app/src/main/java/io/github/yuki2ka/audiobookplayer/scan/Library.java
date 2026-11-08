@@ -18,6 +18,7 @@ import java.util.concurrent.ThreadFactory;
 import io.github.yuki2ka.audiobookplayer.data.Db;
 import io.github.yuki2ka.audiobookplayer.model.AudioFile;
 import io.github.yuki2ka.audiobookplayer.model.FolderNode;
+import io.github.yuki2ka.audiobookplayer.model.QueueEntry;
 import io.github.yuki2ka.audiobookplayer.model.ScanResult;
 import io.github.yuki2ka.audiobookplayer.playback.PlayQueue;
 
@@ -83,8 +84,19 @@ public final class Library {
         return result != null ? result.root : rootPath;
     }
 
+    /** Audio files in display order (the queue without its separators). */
     public List<AudioFile> files() {
-        return queue.items();
+        return queue.files();
+    }
+
+    /** Rows of the unified list: files and folder separators, in display order. */
+    public List<QueueEntry> entries() {
+        return queue.entries();
+    }
+
+    /** Number of audio files in the current scan (separators excluded). */
+    public int fileCount() {
+        return queue.fileCount();
     }
 
     public PlayQueue queue() {
@@ -183,7 +195,7 @@ public final class Library {
         }
         scanning = false;
         result = scanResult;
-        queue.reset(scanResult.allFiles, anchorPath);
+        queue.reset(scanResult.rootNode, anchorPath);
         positions.clear();
         positions.putAll(db.loadPositions());
         if (listener != null) {
@@ -197,7 +209,7 @@ public final class Library {
         if (result == null) {
             return;
         }
-        queue.reset(result.allFiles, anchorPath);
+        queue.reset(result.rootNode, anchorPath);
         positions.clear();
         positions.putAll(db.loadPositions());
     }
@@ -217,8 +229,33 @@ public final class Library {
                 node = result.nodes.get(node.parentPath());
             }
         }
-        queue.items().remove(file);
         positions.remove(file.path);
+        // Rebuild the rows from the tree so a folder that just lost its last
+        // file no longer opens and closes around nothing.
+        rebuildRows(leadPathOf(file, queue.anchor()));
+    }
+
+    /** Re-derives the unified rows from the tree, keeping the reading position. */
+    private void rebuildRows(String anchorPath) {
+        if (result == null) {
+            return;
+        }
+        queue.reset(result.rootNode, anchorPath);
+    }
+
+    /**
+     * The file that should end up on the first audio row after a change: the
+     * one that led the list, unless it is the file being removed.
+     */
+    private String leadPathOf(AudioFile removed, String fallback) {
+        if (fallback != null && (removed == null || !fallback.equals(removed.path))) {
+            return fallback;
+        }
+        AudioFile first = queue.firstFile();
+        if (first != null && (removed == null || !first.path.equals(removed.path))) {
+            return first.path;
+        }
+        return result == null || result.allFiles.isEmpty() ? null : result.allFiles.get(0).path;
     }
 
     /** Removes a deleted subfolder and its audio files from the current scan. */
@@ -241,12 +278,8 @@ public final class Library {
                 allFiles.remove();
             }
         }
-        Iterator<AudioFile> queueItems = queue.items().iterator();
-        while (queueItems.hasNext()) {
-            if (removedPaths.contains(queueItems.next().path)) {
-                queueItems.remove();
-            }
-        }
+        String queueLead = queue.anchor();
+        boolean leadRemoved = queueLead != null && removedPaths.contains(queueLead);
 
         Iterator<String> savedPaths = positions.keySet().iterator();
         while (savedPaths.hasNext()) {
@@ -260,6 +293,11 @@ public final class Library {
             ancestor.totalFiles = Math.max(0, ancestor.totalFiles - removedAudioFiles);
             ancestor = result.nodes.get(ancestor.parentPath());
         }
+
+        // Rebuild the rows: both separators of the deleted folder disappear, and
+        // a parent that just lost its last file stops opening around nothing.
+        String anchor = leadRemoved ? null : queueLead;
+        rebuildRows(anchor);
     }
 
     private void collectFolderPaths(FolderNode folder, Set<String> paths) {

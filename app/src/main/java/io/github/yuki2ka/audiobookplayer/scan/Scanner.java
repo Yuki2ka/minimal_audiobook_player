@@ -7,13 +7,13 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
 import io.github.yuki2ka.audiobookplayer.model.AudioFile;
 import io.github.yuki2ka.audiobookplayer.model.FolderNode;
 import io.github.yuki2ka.audiobookplayer.model.ScanResult;
+import io.github.yuki2ka.audiobookplayer.model.TreeOrder;
 import io.github.yuki2ka.audiobookplayer.util.NaturalSort;
 
 /**
@@ -78,17 +78,20 @@ public final class Scanner {
 
         if (error == null) {
             Counter counter = new Counter(progress);
-            walk(rootNode, allFiles, nodes, 0, counter);
+            walk(rootNode, nodes, 0, counter);
             countFiles(rootNode);
             sortNode(rootNode);
-            Collections.sort(allFiles, FILE_COMPARATOR);
+            // The unified order is the folder tree, not a flat name sort: a
+            // folder's separators, its sub-folders and its own files stay
+            // together and chapters of one book never interleave with another.
+            allFiles.addAll(TreeOrder.files(rootNode));
         }
 
         return new ScanResult(rootPath, rootNode, allFiles, nodes, error);
     }
 
-    private static void walk(FolderNode node, List<AudioFile> allFiles,
-                             HashMap<String, FolderNode> nodes, int depth, Counter counter) {
+    private static void walk(FolderNode node, HashMap<String, FolderNode> nodes,
+                             int depth, Counter counter) {
         if (depth > MAX_DEPTH || Thread.currentThread().isInterrupted()) {
             return;
         }
@@ -121,7 +124,7 @@ public final class Scanner {
                         NaturalSort.normalize(fileName));
                 node.folders.add(sub);
                 nodes.put(sub.path, sub);
-                walk(sub, allFiles, nodes, depth + 1, counter);
+                walk(sub, nodes, depth + 1, counter);
             } else if (isAudio(fileName)) {
                 AudioFile file = new AudioFile(
                         child.getAbsolutePath(),
@@ -130,7 +133,6 @@ public final class Scanner {
                         child.length(),
                         child.lastModified());
                 node.files.add(file);
-                allFiles.add(file);
                 counter.increment();
             }
         }
