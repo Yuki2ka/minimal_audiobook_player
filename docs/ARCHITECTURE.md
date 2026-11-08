@@ -158,7 +158,8 @@ play sequence and the visible order are the same thing.
 separators, never a re-sort. Whole rows move together, and the activity re-reads
 the live list (`FileListRows` → `AudioFileAdapter`) instead of grouping rows on
 every refresh. Because a ring has no start, a folder may straddle the wrap point
-— which is exactly why each folder has a closing line as well as an opening one.
+— closing lines are kept before parent/root files and at wrap, but omitted
+when another separator already marks the boundary.
 
 Rotation anchors the playing file: it is always the first *file* row. When it is
 the first file of its folder, the rows naming that folder (and its parents) lead
@@ -184,7 +185,7 @@ lines and the size / saved-position line stays fully visible. Compact
 
 In discrete mode `AudioFileAdapter.discreteRowHeightPx()` measures a one-line
 file row at the current font size, floors it at `row_min_height`, and gives that
-one exact height to every file row and folder delimiter (names go back to one
+one exact height to every file row (folder delimiters stay at 24 dp) (names go back to one
 line). This replaces a fixed `64 sp` constant, which grew with the font scale
 and made discrete gaps much larger than the smooth list's. `MainActivity`
 passes the measured height to `DiscreteListView.setDiscreteRowHeight()`, which

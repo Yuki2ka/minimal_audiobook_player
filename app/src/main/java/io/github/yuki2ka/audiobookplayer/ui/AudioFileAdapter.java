@@ -63,7 +63,7 @@ public final class AudioFileAdapter extends BaseAdapter {
     }
 
     /**
-     * One exact height for every discrete row: the natural height of a
+     * One exact height for every discrete file row: the natural height of a
      * one-line file row, measured with the current font scale and floored at
      * the shared {@code row_min_height}. That is the height a smooth row uses,
      * so discrete mode no longer adds an extra gutter per row (a fixed 64 sp
@@ -112,7 +112,7 @@ public final class AudioFileAdapter extends BaseAdapter {
     /**
      * In smooth mode file rows grow with their two text lines (minimum 60 dp),
      * so long names and the size / saved-position info are never clipped. In
-     * discrete mode every row — file or folder delimiter — gets the same exact
+     * discrete mode every file row gets the same exact
      * measured height (see {@link #discreteRowHeightPx()}) and file names go
      * back to one line, so the viewport still holds an integer number of
      * complete rows with the same gaps as smooth mode.
@@ -200,9 +200,7 @@ public final class AudioFileAdapter extends BaseAdapter {
             holder = (FolderHolder) convertView.getTag();
         }
 
-        int height = discreteMode
-                ? discreteRowHeightPx()
-                : context.getResources().getDimensionPixelSize(R.dimen.folder_delimiter_height);
+        int height = context.getResources().getDimensionPixelSize(R.dimen.folder_delimiter_height);
         ViewGroup.LayoutParams params = holder.root.getLayoutParams();
         if (params != null && params.height != height) {
             params.height = height;

@@ -455,7 +455,6 @@ public final class LogicTests {
                 "a1",               // Part A's own file
                 "/",                // closes Part A
                 "b1", "b2",         // Book 1's own files come after its sub-folders
-                "/",                // closes Book 1
                 "Book 2/",
                 "c1",
                 "/");
@@ -490,7 +489,7 @@ public final class LogicTests {
         FolderNode emptied = sampleTree();
         emptied.folders.get(0).folders.get(0).files.clear();
         eq("an emptied sub-folder disappears", Arrays.asList(
-                "Book 1/", "b1", "b2", "/", "Book 2/", "c1", "/"),
+                "Book 1/", "b1", "b2", "Book 2/", "c1", "/"),
                 shape(TreeOrder.entries(emptied)));
 
         // Files directly in the library root are listed without a separator.
@@ -498,6 +497,32 @@ public final class LogicTests {
         bare.files.add(new AudioFile("/root/y.mp3", "y", "root", 1L, 1L));
         eq("root files have no separator", Collections.singletonList("y"),
                 shape(TreeOrder.entries(bare)));
+
+        // Sibling headers replace closing lines, but the line before the
+        // parent's own files must remain (the user's nested-folder example).
+        FolderNode siblings = sampleTree();
+        FolderNode partB = new FolderNode("/root/Book 1/Part B", "Part B");
+        partB.files.add(new AudioFile(partB.path + "/a2.mp3", "a2", "Part B", 1L, 1L));
+        siblings.folders.get(0).folders.add(partB);
+        eq("siblings share one boundary", Arrays.asList(
+                "Book 1/", "Part A/", "a1", "Part B/", "a2", "/",
+                "b1", "b2", "Book 2/", "c1", "/"), shape(TreeOrder.entries(siblings)));
+
+        // If a parent has no own files, multiple closing lines collapse to
+        // the outermost boundary, including the final boundary at queue wrap.
+        FolderNode nested = sampleTree();
+        nested.folders.get(0).files.clear();
+        nested.folders.remove(1);
+        List<QueueEntry> nestedEntries = TreeOrder.entries(nested);
+        eq("nested closing lines collapse", Arrays.asList("Book 1/", "Part A/", "a1", "/"),
+                shape(nestedEntries));
+        eq("outer closing depth survives", 0, nestedEntries.get(3).depth);
+        eq("outer closing path survives", "/root/Book 1", nestedEntries.get(3).path);
+        nested.files.add(new AudioFile("/root/r.mp3", "r", "root", 1L, 1L));
+        eq("boundary before root files survives", Arrays.asList(
+                "Book 1/", "Part A/", "a1", "/", "r"), shape(TreeOrder.entries(nested)));
+        eq("separator cleanup never changes playback order", Arrays.asList("a1", "r"),
+                names(TreeOrder.files(nested)));
 
         eq("null tree has no rows", 0, TreeOrder.entries(null).size());
         eq("empty tree has no files", 0, TreeOrder.files(new FolderNode("/root", "root")).size());
@@ -516,7 +541,7 @@ public final class LogicTests {
         FileListRows rows = new FileListRows();
         rows.rebuild(TreeOrder.entries(root));
 
-        eq("rows are the queue rows", 10, rows.size());
+        eq("rows are the queue rows", 9, rows.size());
         eq("first row names the folder", FileListRows.TYPE_FOLDER, rows.typeAt(0));
         eq("first row name", "Book 1", rows.folderNameAt(0));
         eq("second row is the nested folder", "Part A", rows.folderNameAt(1));
@@ -532,7 +557,7 @@ public final class LogicTests {
         for (int i = 0; i < rows.size(); i++) {
             eq("row " + i + " maps to itself", i, rows.queueIndexAtOrAfter(i));
         }
-        eq("row past the end clamps", 9, rows.queueIndexAtOrAfter(40));
+        eq("row past the end clamps", 8, rows.queueIndexAtOrAfter(40));
 
         FileListRows empty = new FileListRows();
         empty.rebuild(Collections.<QueueEntry>emptyList());
@@ -772,13 +797,13 @@ public final class LogicTests {
         PlayQueue queue = new PlayQueue();
         queue.reset(root, "/root/Book 2/c1.mp3");
         eq("rotation starts with the folder opening", Arrays.asList(
-                "Book 2/", "c1", "/", "Book 1/", "Part A/", "a1", "/", "b1", "b2", "/"),
+                "Book 2/", "c1", "/", "Book 1/", "Part A/", "a1", "/", "b1", "b2"),
                 shape(queue.entries()));
 
         // Rotating to a nested file keeps both of its folders' opening rows.
         queue.reset(root, "/root/Book 1/Part A/a1.mp3");
         eq("nested rotation opens both folders", Arrays.asList(
-                "Book 1/", "Part A/", "a1", "/", "b1", "b2", "/", "Book 2/", "c1", "/"),
+                "Book 1/", "Part A/", "a1", "/", "b1", "b2", "Book 2/", "c1", "/"),
                 shape(queue.entries()));
 
         // Rotating to the middle of a folder puts only that folder's opening
@@ -786,7 +811,7 @@ public final class LogicTests {
         // folder's closing line ends the wrapped block.
         queue.reset(root, "/root/Book 1/b2.mp3");
         eq("mid-folder rotation", Arrays.asList(
-                "b2", "/", "Book 2/", "c1", "/", "Book 1/", "Part A/", "a1", "/", "b1"),
+                "b2", "Book 2/", "c1", "/", "Book 1/", "Part A/", "a1", "/", "b1"),
                 shape(queue.entries()));
 
         // Whatever the anchor, the playing file is the first file of the list:
