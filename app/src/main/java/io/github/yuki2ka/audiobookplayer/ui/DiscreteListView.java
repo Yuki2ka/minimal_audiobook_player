@@ -7,6 +7,9 @@ import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.widget.ListView;
+import android.widget.ListAdapter;
+
+import io.github.yuki2ka.audiobookplayer.model.FileListRows;
 
 import io.github.yuki2ka.audiobookplayer.R;
 import io.github.yuki2ka.audiobookplayer.util.DiscreteDrag;
@@ -72,10 +75,9 @@ public final class DiscreteListView extends ListView {
     }
 
     /**
-     * The adapter measures one one-line file row and gives every discrete row
-     * that exact height. Using it for the bottom gutter and the finger's row
-     * step keeps both modes at the same compact spacing instead of inflating
-     * the list with a font-scaled constant.
+     * The adapter measures a one-line file row for the finger's step. Folder
+     * rows stay compact in both modes; the bottom gutter accounts for their
+     * smaller height separately.
      */
     public void setDiscreteRowHeight(int heightPx) {
         discreteRowHeight = heightPx;
@@ -99,9 +101,7 @@ public final class DiscreteListView extends ListView {
         setOverScrollMode(enabled ? View.OVER_SCROLL_NEVER : defaultOverScrollMode);
         setClipToPadding(enabled || defaultClipToPadding);
         if (enabled) {
-            // All rows use the adapter's measured height, so the bottom gutter
-            // (and the finger's row step) cannot be computed from a partially
-            // laid-out or mixed file/delimiter row.
+            // Keep whole rows visible even with compact folder delimiters.
             updateDiscretePadding(getHeight());
         } else {
             setPadding(defaultPaddingLeft, defaultPaddingTop,
@@ -299,9 +299,22 @@ public final class DiscreteListView extends ListView {
         if (extent <= 0) {
             return;
         }
-        // Leave only a bottom gutter (less than one row) so the viewport shows
-        // an integer number of complete items and the current row stays at top.
-        int bottomPadding = height % extent;
+        // Fit complete rows using their actual fixed discrete heights, not
+        // height % fileHeight: folder headers and closing rules are shorter.
+        ListAdapter adapter = getAdapter();
+        int used = 0;
+        int folderHeight = getResources().getDimensionPixelSize(R.dimen.folder_delimiter_height);
+        if (adapter != null) {
+            for (int i = getFirstVisiblePosition(); i < adapter.getCount(); i++) {
+                int rowHeight = adapter.getItemViewType(i) == FileListRows.TYPE_FOLDER
+                        ? folderHeight : extent;
+                if (used + rowHeight > height) {
+                    break;
+                }
+                used += rowHeight;
+            }
+        }
+        int bottomPadding = height - used;
         if (getPaddingTop() != 0 || getPaddingBottom() != bottomPadding) {
             setPadding(getPaddingLeft(), 0, getPaddingRight(), bottomPadding);
         }

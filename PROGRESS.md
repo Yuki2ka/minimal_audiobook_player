@@ -5,7 +5,7 @@ Next-step pointer lives in [TASKS.md](TASKS.md).
 
 Project: **Minimal Audiobook Player** — a dependency-free Android audiobook player
 (minSdk 24 / Android 7.0, targetSdk 34), package `io.github.yuki2ka.audiobookplayer`,
-version 1.7.2.
+version 1.7.3.
 
 ## Milestones
 
@@ -37,15 +37,24 @@ version 1.7.2.
 | 23 | 1.7.1: compact gaps shared by smooth and discrete rows (measured one-line height) | ✅ built |
 | 24 | 1.7.2: All-files list is a real folder tree again (name / bare-line separators, tree order, rotation of whole rows) | ✅ built |
 
+## 1.7.3 — compact full file list
+
+- Omit closing separators before sibling headers or another closing separator;
+  retain the outer boundary before parent/root files and at queue wrap.
+- Center headers and bare rules in equal 24 dp rows, including discrete mode.
+  Discrete padding fits complete mixed-height rows; file touch targets stay unchanged.
+- Built `artifacts/AudiobooksMinimalPlayer-1.7.3.apk` (versionCode 12).
+- No device/emulator available; UI changes are build-checked, not device-tested.
+
 ## Verification (last run)
 
 | Check | Result |
 |-------|--------|
-| `tools/run-tests.sh` | **601 assertions, 0 failed** (locale forced to UTF-8) |
+| `tools/run-tests.sh` | **605 assertions, 0 failed** (locale forced to UTF-8) |
 | `tools/check-resources.py` | 91 ids, 11 layouts, 125 strings, 31 drawables — all references resolve, plus the file-row / speed-label / row-spacing / folder-tree guards |
 | Full app Java compilation | Passed against an Android boot classpath, including the modified adapters / list view |
-| `tools/build-apk.sh` | `artifacts/AudiobooksMinimalPlayer-1.7.2.apk`, **228 KB** |
-| Manifest / badging | package correct, versionCode 11, versionName 1.7.2, **sdkVersion 24**, target 34, launcher `MainActivity` |
+| `tools/build-apk.sh` | `artifacts/AudiobooksMinimalPlayer-1.7.3.apk`, **228 KB** |
+| Manifest / badging | package correct, versionCode 12, versionName 1.7.3, **sdkVersion 24**, target 34, launcher `MainActivity` |
 | DEX | `classes.dex` packaged by D8 with `--min-api 24`; no AndroidX or Kotlin runtime |
 | Signature | `apksigner verify`: v2 + v3 true, `CN=Android Debug` (RSA-2048) |
 | Alignment | every entry's data 4-byte aligned (`tools/zipalign.py` verifies it) |

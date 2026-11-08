@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One row of the folder tree in the flat list. A folder gets two of these:
+<!-- One row of the folder tree in the flat list. Folder boundaries use:
 
        * opening: the folder icon, the folder name and a rule to the right;
        * closing: no icon and no name, just the rule (it separates the folder
-         from whatever follows, including when the rotating list wraps).
+         from following files or the queue wrap; omitted before another separator).
 
      The whole row is indented by its nesting depth (see AudioFileAdapter), so a
      sub-folder's line starts where its parent's name does. The rule is the only

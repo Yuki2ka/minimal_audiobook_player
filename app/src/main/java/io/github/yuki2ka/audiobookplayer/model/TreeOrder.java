@@ -12,7 +12,8 @@ import java.util.List;
  *   <li>an <em>opening</em> separator naming the folder,</li>
  *   <li>its sub-folders (same rules, one level deeper),</li>
  *   <li>its own audio files,</li>
- *   <li>a <em>closing</em> separator: a bare line, no name.</li>
+ *   <li>a <em>closing</em> separator: a bare line, no name, omitted when
+ *       the next separator already marks the boundary.</li>
  * </ol>
  *
  * <p>The library root itself is not named: it has no separator of its own, so
@@ -53,6 +54,13 @@ public final class TreeOrder {
         }
         // The library root is not named: its children are the top level.
         append(root, 0, false, entries);
+        // A following header already marks the boundary. For nested closing
+        // lines, keep only the outermost one before the next file (or wrap).
+        for (int i = entries.size() - 2; i >= 0; i--) {
+            if (entries.get(i).isFolderEnd() && !entries.get(i + 1).isFile()) {
+                entries.remove(i);
+            }
+        }
         return entries;
     }
 
