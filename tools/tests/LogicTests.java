@@ -13,7 +13,9 @@ import java.util.Random;
 import io.github.yuki2ka.audiobookplayer.model.AudioFile;
 import io.github.yuki2ka.audiobookplayer.model.FileListRows;
 import io.github.yuki2ka.audiobookplayer.model.FolderNode;
+import io.github.yuki2ka.audiobookplayer.model.QueueEntry;
 import io.github.yuki2ka.audiobookplayer.model.ScanResult;
+import io.github.yuki2ka.audiobookplayer.model.TreeOrder;
 import io.github.yuki2ka.audiobookplayer.playback.PlayQueue;
 import io.github.yuki2ka.audiobookplayer.scan.Scanner;
 import io.github.yuki2ka.audiobookplayer.util.DiscreteDrag;
@@ -41,12 +43,14 @@ public final class LogicTests {
         testSeekZoneMapping();
         testPlaybackSpeed();
         testDiscreteDrag();
+        testTreeOrder();
         testFileListRows();
         testNaturalSortBasics();
         testNaturalSortUnicode();
         testDisplayName();
         testFingerprint();
         testPlayQueue();
+        testQueueRotationKeepsFolders();
         testScanner();
 
         System.out.println();
@@ -408,45 +412,133 @@ public final class LogicTests {
                 name, folder, 1L, 1L);
     }
 
+    /** A library shaped like a real one: books, a sub-folder, single files. */
+    private static FolderNode sampleTree() {
+        FolderNode root = new FolderNode("/root", "root");
+        FolderNode bookOne = new FolderNode("/root/Book 1", "Book 1");
+        FolderNode partA = new FolderNode("/root/Book 1/Part A", "Part A");
+        FolderNode bookTwo = new FolderNode("/root/Book 2", "Book 2");
+
+        partA.files.add(new AudioFile("/root/Book 1/Part A/a1.mp3", "a1", "Part A", 1L, 1L));
+        bookOne.files.add(new AudioFile("/root/Book 1/b1.mp3", "b1", "Book 1", 1L, 1L));
+        bookOne.files.add(new AudioFile("/root/Book 1/b2.mp3", "b2", "Book 1", 1L, 1L));
+        bookTwo.files.add(new AudioFile("/root/Book 2/c1.mp3", "c1", "Book 2", 1L, 1L));
+
+        bookOne.folders.add(partA);
+        root.folders.add(bookOne);
+        root.folders.add(bookTwo);
+        return root;
+    }
+
+    /** Compact shape of the rows: "Book 1/" opens, "/" closes, names otherwise. */
+    private static List<String> shape(List<QueueEntry> entries) {
+        List<String> rows = new ArrayList<>();
+        for (QueueEntry entry : entries) {
+            if (entry.isFile()) {
+                rows.add(entry.file.name);
+            } else if (entry.isFolderEnd()) {
+                rows.add("/");
+            } else {
+                rows.add(entry.name + "/");
+            }
+        }
+        return rows;
+    }
+
+    private static void testTreeOrder() {
+        FolderNode root = sampleTree();
+        List<QueueEntry> entries = TreeOrder.entries(root);
+
+        List<String> expected = Arrays.asList(
+                "Book 1/",          // opens Book 1
+                "Part A/",          // sub-folder first, one level deeper
+                "a1",               // Part A's own file
+                "/",                // closes Part A
+                "b1", "b2",         // Book 1's own files come after its sub-folders
+                "/",                // closes Book 1
+                "Book 2/",
+                "c1",
+                "/");
+        eq("tree order", expected, shape(entries));
+
+        eq("nested depth", 1, entries.get(1).depth);
+        eq("own file depth", 0, entries.get(4).depth);
+        eq("nested file depth", 1, entries.get(2).depth);
+        eq("closing rows carry no name", null, entries.get(3).name);
+        eq("closing row keeps the folder path", "/root/Book 1/Part A", entries.get(3).path);
+        eq("root is not named", false, entries.get(0).isFolderEnd());
+        eq("opening row names its folder", "Book 1", entries.get(0).name);
+
+        // The play sequence is the visible order without the separators.
+        List<AudioFile> files = TreeOrder.files(root);
+        eq("play order", Arrays.asList("a1", "b1", "b2", "c1"), names(files));
+
+        // A folder with no sub-folders still gets both separators.
+        FolderNode flat = new FolderNode("/root", "root");
+        FolderNode only = new FolderNode("/root/Only", "Only");
+        only.files.add(new AudioFile("/root/Only/x.mp3", "x", "Only", 1L, 1L));
+        flat.folders.add(only);
+        eq("single folder shape", Arrays.asList("Only/", "x", "/"), shape(TreeOrder.entries(flat)));
+
+        // A folder without any audio (a covers/text folder, or a folder whose
+        // last file was just deleted) gets no separators at all.
+        FolderNode withEmpty = sampleTree();
+        FolderNode emptyFolder = new FolderNode("/root/Book 1/Notes", "Notes");
+        withEmpty.folders.get(0).folders.add(emptyFolder);
+        eq("empty folders are skipped", expected, shape(TreeOrder.entries(withEmpty)));
+
+        FolderNode emptied = sampleTree();
+        emptied.folders.get(0).folders.get(0).files.clear();
+        eq("an emptied sub-folder disappears", Arrays.asList(
+                "Book 1/", "b1", "b2", "/", "Book 2/", "c1", "/"),
+                shape(TreeOrder.entries(emptied)));
+
+        // Files directly in the library root are listed without a separator.
+        FolderNode bare = new FolderNode("/root", "root");
+        bare.files.add(new AudioFile("/root/y.mp3", "y", "root", 1L, 1L));
+        eq("root files have no separator", Collections.singletonList("y"),
+                shape(TreeOrder.entries(bare)));
+
+        eq("null tree has no rows", 0, TreeOrder.entries(null).size());
+        eq("empty tree has no files", 0, TreeOrder.files(new FolderNode("/root", "root")).size());
+    }
+
+    private static List<String> names(List<AudioFile> files) {
+        List<String> names = new ArrayList<>();
+        for (AudioFile file : files) {
+            names.add(file.name);
+        }
+        return names;
+    }
+
     private static void testFileListRows() {
-        AudioFile a1 = inFolder("A", "01");
-        AudioFile a2 = inFolder("A", "02");
-        AudioFile b1 = inFolder("B", "03");
-        AudioFile c1 = inFolder("C", "04");
-        AudioFile a3 = inFolder("A", "05");
-        List<AudioFile> files = new ArrayList<>(Arrays.asList(a1, a2, b1, c1, a3));
-        List<AudioFile> original = new ArrayList<>(files);
-
+        FolderNode root = sampleTree();
         FileListRows rows = new FileListRows();
-        rows.rebuild(files, true);
-        eq("four contiguous folder groups plus five files", 9, rows.size());
-        eq("first row is folder delimiter", FileListRows.TYPE_FOLDER, rows.typeAt(0));
-        eq("first folder name", "A", rows.folderNameAt(0));
-        eq("first file row", a1, rows.fileAt(1));
-        eq("null file on delimiter", null, rows.fileAt(3));
-        eq("second folder name", "B", rows.folderNameAt(3));
-        check("last A file closes first group", rows.isGroupEnd(2));
-        check("file inside group has no closing line", !rows.isGroupEnd(1));
-        check("single-file B group closes", rows.isGroupEnd(4));
-        check("last overall file closes", rows.isGroupEnd(8));
-        eq("same folder later gets a new delimiter", "A", rows.folderNameAt(7));
-        eq("queue remains unchanged", original, files);
+        rows.rebuild(TreeOrder.entries(root));
 
-        eq("folder maps to first file beneath it", 0, rows.fileIndexAtOrAfter(0));
-        eq("file maps to itself", 1, rows.fileIndexAtOrAfter(2));
-        eq("second folder maps to B file", 2, rows.fileIndexAtOrAfter(3));
-        eq("queue index maps around delimiter", 4, rows.rowForFileIndex(2));
-        eq("last queue index maps to last row", 8, rows.rowForFileIndex(4));
-        eq("invalid queue index has no row", -1, rows.rowForFileIndex(5));
+        eq("rows are the queue rows", 10, rows.size());
+        eq("first row names the folder", FileListRows.TYPE_FOLDER, rows.typeAt(0));
+        eq("first row name", "Book 1", rows.folderNameAt(0));
+        eq("second row is the nested folder", "Part A", rows.folderNameAt(1));
+        eq("nested row depth", 1, rows.depthAt(1));
+        eq("file row", "a1", rows.fileAt(2).name);
+        check("closing row is a line", rows.isFolderEnd(3));
+        eq("closing row has no name", null, rows.folderNameAt(3));
+        check("file row is not a closing line", !rows.isFolderEnd(2));
+        eq("file row has no folder name", null, rows.folderNameAt(2));
 
-        rows.rebuild(files, false);
-        eq("folder delimiters can be disabled", files.size(), rows.size());
-        eq("plain rows start with file", FileListRows.TYPE_FILE, rows.typeAt(0));
-        check("plain rows have no group closing lines", !rows.isGroupEnd(4));
+        // Rows map one-to-one onto the queue, which is what discrete scrolling
+        // and the row selection rely on.
+        for (int i = 0; i < rows.size(); i++) {
+            eq("row " + i + " maps to itself", i, rows.queueIndexAtOrAfter(i));
+        }
+        eq("row past the end clamps", 9, rows.queueIndexAtOrAfter(40));
 
-        rows.rebuild(Collections.<AudioFile>emptyList(), true);
-        eq("empty queue has no rows", 0, rows.size());
-        eq("empty queue has no file mapping", -1, rows.fileIndexAtOrAfter(0));
+        FileListRows empty = new FileListRows();
+        empty.rebuild(Collections.<QueueEntry>emptyList());
+        eq("empty list has no rows", 0, empty.size());
+        eq("empty list has no file", null, empty.fileAt(0));
+        eq("empty list clamps to nothing", -1, empty.queueIndexAtOrAfter(0));
     }
 
     private static void testNaturalSortBasics() {
@@ -591,59 +683,161 @@ public final class LogicTests {
         AudioFile b = audio("/b/b.mp3");
         AudioFile c = audio("/b/c.mp3");
         AudioFile d = audio("/b/d.mp3");
-        List<AudioFile> sorted = new ArrayList<>(Arrays.asList(a, b, c, d));
+
+        // One folder with four files: two separators, then the files.
+        FolderNode root = new FolderNode("/b", "b");
+        FolderNode only = new FolderNode("/b/f", "f");
+        only.files.addAll(Arrays.asList(a, b, c, d));
+        root.folders.add(only);
 
         PlayQueue queue = new PlayQueue();
-        queue.reset(sorted, c.path);
-        List<AudioFile> items = queue.items();
-        eq("anchor rotated to front", Arrays.asList(c, d, a, b), items);
-        eq("anchor path", c.path, queue.anchor());
-        check("list instance reused", items == queue.items());
+        queue.reset(root, a.path);
+        List<AudioFile> files = queue.files();
+        eq("anchor stays first", Arrays.asList(a, b, c, d), files);
+        eq("anchor path", a.path, queue.anchor());
+        eq("rows hold both separators", 6, queue.size());
+        eq("file count ignores separators", 4, queue.fileCount());
+        eq("first file row follows the folder separator", 1, queue.firstFileIndex());
+        eq("separator above the playing file", "f", queue.entries().get(0).name);
+
+        queue.reset(root, c.path);
+        eq("middle of a folder becomes the head", Arrays.asList(c, d, a, b), queue.files());
+        eq("a wrapped head starts with the file itself", 0, queue.firstFileIndex());
+        check("the folder closes right below the wrapped head",
+                queue.entries().get(2).isFolderEnd());
 
         AudioFile next = queue.advanceFrom(c.path);
         eq("advance returns next", d, next);
-        eq("finished file moved to bottom", Arrays.asList(d, a, b, c), queue.items());
+        eq("finished file moved to bottom", Arrays.asList(d, a, b, c), queue.files());
         eq("anchor updated", d.path, queue.anchor());
 
         AudioFile previous = queue.retreatFrom(d.path);
-        eq("retreat returns last", c, previous);
-        eq("retreat moves last to front", Arrays.asList(c, d, a, b), queue.items());
+        eq("retreat returns previous", c, previous);
+        eq("retreat wraps to the last file", Arrays.asList(c, d, a, b), queue.files());
 
+        List<String> beforeSwipe = shape(queue.entries());
         queue.rotateViewBackward();
-        eq("discrete backward swipe prepends last item", Arrays.asList(b, c, d, a), queue.items());
-        eq("backward swipe updates view anchor", b.path, queue.anchor());
+        // A browse swipe moves the head, so a different file is first, but the
+        // rows themselves are unchanged: this is a pure rotation.
+        eq("backward swipe moves the last row to the front", beforeSwipe.get(beforeSwipe.size() - 1),
+                shape(queue.entries()).get(0));
+        eq("backward swipe keeps every row", beforeSwipe.size(), shape(queue.entries()).size());
         queue.rotateViewForward();
-        eq("discrete forward swipe moves first item to end", Arrays.asList(c, d, a, b), queue.items());
-        eq("forward swipe updates view anchor", c.path, queue.anchor());
-        queue.rotateViewBackward();
+        eq("forward swipe restores the rows", beforeSwipe, shape(queue.entries()));
         AudioFile afterBrowse = queue.advanceFrom(c.path);
-        eq("playback advance re-anchors after list browsing", d, afterBrowse);
-        eq("playback advance after browsing", Arrays.asList(d, a, b, c), queue.items());
+        eq("playback advance re-anchors after browsing", d, afterBrowse);
 
-        queue.reset(sorted, null);
-        eq("missing anchor keeps sorted order", sorted, queue.items());
-        queue.promoteToFront(2);
-        eq("promote rotates list", Arrays.asList(c, d, a, b), queue.items());
+        queue.reset(root, null);
+        eq("missing anchor keeps tree order", Arrays.asList(a, b, c, d), queue.files());
+        queue.promoteToFront(queue.indexOf(c.path));
+        eq("promote rotates the queue", Arrays.asList(c, d, a, b), queue.files());
         eq("promote anchor", c.path, queue.anchor());
 
         PlayQueue single = new PlayQueue();
-        single.reset(Collections.singletonList(a), a.path);
+        FolderNode one = new FolderNode("/b", "b");
+        FolderNode oneFolder = new FolderNode("/b/f", "f");
+        oneFolder.files.add(a);
+        one.folders.add(oneFolder);
+        single.reset(one, a.path);
         eq("single item advance", null, single.advanceFrom(a.path));
         eq("single item retreat", null, single.retreatFrom(a.path));
-        eq("single item order", Collections.singletonList(a), single.items());
+        eq("single item keeps its separators", Arrays.asList("f/", a.name, "/"),
+                shape(single.entries()));
 
         PlayQueue empty = new PlayQueue();
-        empty.reset(Collections.<AudioFile>emptyList(), null);
+        empty.reset(new FolderNode("/b", "b"), null);
         eq("empty anchor", null, empty.anchor());
         eq("empty advance", null, empty.advanceFrom(null));
         check("empty queue", empty.isEmpty());
 
         // Advancing from a file that is not the head rotates to it first.
         PlayQueue other = new PlayQueue();
-        other.reset(sorted, null);
+        other.reset(root, null);
         AudioFile fromB = other.advanceFrom(b.path);
         eq("advance from b", c, fromB);
-        eq("order after advance from b", Arrays.asList(c, d, a, b), other.items());
+        eq("order after advance from b", Arrays.asList(c, d, a, b), other.files());
+    }
+
+    /**
+     * The whole point of the separators: a rotation must never make a folder
+     * look like it belongs to a different one. Every rotation is still a
+     * rotation of the tree walk, so the names open their own groups.
+     */
+    private static void testQueueRotationKeepsFolders() {
+        FolderNode root = sampleTree();
+        List<String> tree = shape(TreeOrder.entries(root));
+
+        // Rotating to the last file of the last folder keeps that folder's
+        // opening line directly above it.
+        PlayQueue queue = new PlayQueue();
+        queue.reset(root, "/root/Book 2/c1.mp3");
+        eq("rotation starts with the folder opening", Arrays.asList(
+                "Book 2/", "c1", "/", "Book 1/", "Part A/", "a1", "/", "b1", "b2", "/"),
+                shape(queue.entries()));
+
+        // Rotating to a nested file keeps both of its folders' opening rows.
+        queue.reset(root, "/root/Book 1/Part A/a1.mp3");
+        eq("nested rotation opens both folders", Arrays.asList(
+                "Book 1/", "Part A/", "a1", "/", "b1", "b2", "/", "Book 2/", "c1", "/"),
+                shape(queue.entries()));
+
+        // Rotating to the middle of a folder puts only that folder's opening
+        // row in front of the file: the chapters after it follow, and the
+        // folder's closing line ends the wrapped block.
+        queue.reset(root, "/root/Book 1/b2.mp3");
+        eq("mid-folder rotation", Arrays.asList(
+                "b2", "/", "Book 2/", "c1", "/", "Book 1/", "Part A/", "a1", "/", "b1"),
+                shape(queue.entries()));
+
+        // Whatever the anchor, the playing file is the first file of the list:
+        // the separators that name its folder lead it only when they sit
+        // directly above it, so no file is ever pushed below another one.
+        for (String anchor : Arrays.asList(
+                "/root/Book 1/Part A/a1.mp3", "/root/Book 1/b1.mp3",
+                "/root/Book 1/b2.mp3", "/root/Book 2/c1.mp3")) {
+            PlayQueue anchored = new PlayQueue();
+            anchored.reset(root, anchor);
+            check("anchor " + anchor + " is the first file",
+                    anchored.firstFile() != null && anchor.equals(anchored.firstFile().path));
+        }
+        PlayQueue named = new PlayQueue();
+        named.reset(root, "/root/Book 1/Part A/a1.mp3");
+        eq("a folder's first file keeps its name above it", "Part A",
+                named.entries().get(1).name);
+
+        // Every rotation is exactly a rotation of the tree walk — same rows,
+        // same order, only the cut moves (no row is re-grouped or re-sorted).
+        for (int i = 0; i < tree.size(); i++) {
+            PlayQueue rotated = new PlayQueue();
+            rotated.resetEntries(TreeOrder.entries(root), null);
+            for (int step = 0; step < i; step++) {
+                rotated.rotateViewForward();
+            }
+            List<String> rowsNow = shape(rotated.entries());
+            List<String> expectedRotation = new ArrayList<>(tree.subList(i, tree.size()));
+            expectedRotation.addAll(tree.subList(0, i));
+            eq("rotation " + i + " is a rotation of the tree", expectedRotation, rowsNow);
+        }
+
+        // Walking the whole queue with "next" visits every file once, in tree
+        // order, and comes back to the start.
+        PlayQueue walk = new PlayQueue();
+        walk.reset(root, null);
+        List<String> visited = new ArrayList<>();
+        AudioFile current = walk.firstFile();
+        for (int i = 0; i < walk.fileCount(); i++) {
+            visited.add(current.name);
+            current = walk.advanceFrom(current.path);
+        }
+        eq("next walks the tree", Arrays.asList("a1", "b1", "b2", "c1"), visited);
+        eq("next wraps around", "a1", current == null ? null : current.name);
+
+        // "Previous" walks backwards and wraps to the last file of the queue.
+        PlayQueue back = new PlayQueue();
+        back.reset(root, null);
+        AudioFile previous = back.retreatFrom("a1".equals(back.firstFile().name)
+                ? back.firstFile().path : back.firstFile().path);
+        eq("previous wraps to the last file", "c1", previous == null ? null : previous.name);
     }
 
     private static void testScanner() throws Exception {

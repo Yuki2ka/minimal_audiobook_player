@@ -19,12 +19,18 @@ import java.util.Map;
 import io.github.yuki2ka.audiobookplayer.R;
 import io.github.yuki2ka.audiobookplayer.model.AudioFile;
 import io.github.yuki2ka.audiobookplayer.model.FileListRows;
+import io.github.yuki2ka.audiobookplayer.model.QueueEntry;
 import io.github.yuki2ka.audiobookplayer.util.TimeFormat;
 
 /**
- * Flat list of audio files (the "All files" page). Folder names are shown once
- * as delimiters, not repeated underneath every file. ListView recycling uses a
- * separate view type for delimiters and plain ViewHolders for both row kinds.
+ * The unified "All files" list: a depth-first folder tree drawn as one list.
+ *
+ * <p>Every folder is announced by an opening separator (folder name, indented by
+ * its nesting depth) and closed by a separator that is just a line — so a folder
+ * that wraps around the end of the rotating list is still unambiguous. Files
+ * follow their folder's separator, sub-folders before the folder's own files.
+ * Files and separators are rows of the same ordered queue, so ListView recycling
+ * uses one view type for separators and plain ViewHolders for both row kinds.</p>
  */
 public final class AudioFileAdapter extends BaseAdapter {
 
@@ -37,21 +43,23 @@ public final class AudioFileAdapter extends BaseAdapter {
     private final Context context;
     private final LayoutInflater inflater;
     private final Callbacks callbacks;
-    private final boolean showFolderNames;
     private final FileListRows rows = new FileListRows();
 
-    private List<AudioFile> items = new ArrayList<>();
+    /** The live queue: files and separators, in display order. */
+    private List<QueueEntry> items = new ArrayList<>();
     private Map<String, Long> positions = Collections.emptyMap();
+    /** Indent applied per folder nesting level, resolved once. */
+    private final int depthIndentPx;
     private String playingPath;
     private boolean discreteMode;
     /** Lazily measured, shared by all rows in discrete mode. -1 until needed. */
     private int discreteRowHeight = -1;
 
-    public AudioFileAdapter(Context context, Callbacks callbacks, boolean showFolderNames) {
+    public AudioFileAdapter(Context context, Callbacks callbacks) {
         this.context = context;
         this.inflater = LayoutInflater.from(context);
         this.callbacks = callbacks;
-        this.showFolderNames = showFolderNames;
+        this.depthIndentPx = context.getResources().getDimensionPixelSize(R.dimen.folder_indent);
     }
 
     /**
@@ -79,15 +87,15 @@ public final class AudioFileAdapter extends BaseAdapter {
         return discreteRowHeight;
     }
 
-    /** Keeps a reference to the live queue list (no copy of the files). */
-    public void setFiles(List<AudioFile> files) {
-        this.items = files == null ? new ArrayList<AudioFile>() : files;
+    /** Keeps a reference to the live queue rows (no copy of the files). */
+    public void setEntries(List<QueueEntry> entries) {
+        this.items = entries == null ? new ArrayList<QueueEntry>() : entries;
         refreshFileOrder();
     }
 
-    /** Rebuilds delimiters after the live circular queue has been rotated. */
+    /** Re-reads the live queue after it was rotated (rows move, nothing else). */
     public final void refreshFileOrder() {
-        rows.rebuild(items, showFolderNames);
+        rows.rebuild(items);
         notifyDataSetChanged();
     }
 
@@ -152,14 +160,22 @@ public final class AudioFileAdapter extends BaseAdapter {
         return rows.typeAt(position) == FileListRows.TYPE_FILE;
     }
 
-    /** Maps an adapter row to its index in the underlying file queue. */
-    public int fileIndexAtOrAfter(int row) {
-        return rows.fileIndexAtOrAfter(row);
+    /** Maps an adapter row to the same index in the underlying queue. */
+    public int queueIndexAtOrAfter(int row) {
+        return rows.queueIndexAtOrAfter(row);
     }
 
-    /** Maps a file queue index back to its adapter row. */
-    public int rowForFileIndex(int fileIndex) {
-        return rows.rowForFileIndex(fileIndex);
+    /**
+     * Row of the first audio file, i.e. the first row below the separators that
+     * lead the list (a rotated list can start with the playing file's folder).
+     */
+    public int firstFileRow() {
+        for (int i = 0, n = rows.size(); i < n; i++) {
+            if (rows.typeAt(i) == FileListRows.TYPE_FILE) {
+                return i;
+            }
+        }
+        return 0;
     }
 
     @Override
@@ -170,6 +186,10 @@ public final class AudioFileAdapter extends BaseAdapter {
         return fileView(position, convertView, parent);
     }
 
+    /**
+     * One separator row. An opening separator names the folder and is indented
+     * by its nesting depth; a closing separator is a bare line with no name.
+     */
     private View folderView(int position, View convertView, ViewGroup parent) {
         FolderHolder holder;
         if (convertView == null) {
@@ -188,12 +208,28 @@ public final class AudioFileAdapter extends BaseAdapter {
             params.height = height;
             holder.root.setLayoutParams(params);
         }
+
+        // Nesting is shown by indenting the whole separator (icon + name + rule),
+        // so a sub-folder's line starts where its parent's name does.
+        holder.root.setPaddingRelative(
+                holder.basePaddingStart + rows.depthAt(position) * depthIndentPx,
+                holder.root.getPaddingTop(),
+                holder.basePaddingEnd,
+                holder.root.getPaddingBottom());
+
+        boolean closing = rows.isFolderEnd(position);
         String name = rows.folderNameAt(position);
-        holder.title.setText(name == null || name.length() == 0
-                ? context.getString(R.string.folder_label)
-                : name);
-        holder.title.setContentDescription(context.getString(R.string.folder_label)
-                + ": " + holder.title.getText());
+        boolean named = !closing && name != null && name.length() > 0;
+        holder.icon.setVisibility(named ? View.VISIBLE : View.INVISIBLE);
+        holder.title.setVisibility(named ? View.VISIBLE : View.GONE);
+        if (named) {
+            holder.title.setText(name);
+            holder.title.setContentDescription(context.getString(R.string.folder_label)
+                    + ": " + name);
+        } else {
+            holder.title.setText(null);
+            holder.title.setContentDescription(context.getString(R.string.folder_closed));
+        }
         return convertView;
     }
 
@@ -248,7 +284,6 @@ public final class AudioFileAdapter extends BaseAdapter {
         holder.icon.setImageTintList(ColorStateList.valueOf(
                 context.getColor(playing ? R.color.accent : R.color.text_secondary)));
         holder.root.setBackgroundResource(playing ? R.drawable.bg_row_playing : R.drawable.bg_row);
-        holder.groupEnd.setVisibility(rows.isGroupEnd(position) ? View.VISIBLE : View.GONE);
         holder.delete.setContentDescription(
                 context.getString(R.string.delete_file) + ": " + file.name);
         return convertView;
@@ -267,11 +302,18 @@ public final class AudioFileAdapter extends BaseAdapter {
 
     private static final class FolderHolder {
         final View root;
+        final ImageView icon;
         final TextView title;
+        /** Un-indented start padding, measured once from the inflated layout. */
+        final int basePaddingStart;
+        final int basePaddingEnd;
 
         FolderHolder(View view) {
             root = view;
+            icon = view.findViewById(R.id.folder_delimiter_icon);
             title = view.findViewById(R.id.folder_delimiter_name);
+            basePaddingStart = view.getPaddingStart();
+            basePaddingEnd = view.getPaddingEnd();
         }
     }
 
@@ -281,7 +323,6 @@ public final class AudioFileAdapter extends BaseAdapter {
         final TextView title;
         final TextView subtitle;
         final ImageButton delete;
-        final View groupEnd;
         AudioFile file;
 
         Holder(View view) {
@@ -290,7 +331,6 @@ public final class AudioFileAdapter extends BaseAdapter {
             title = view.findViewById(R.id.row_title);
             subtitle = view.findViewById(R.id.row_subtitle);
             delete = view.findViewById(R.id.row_delete);
-            groupEnd = view.findViewById(R.id.row_group_end);
         }
     }
 }

@@ -107,34 +107,79 @@ opened, cached in the `AudioFile` object for the session.
 
 ## The rotating unified list (`PlayQueue`)
 
-The list is ordered naturally by file name, across folders. Rotation rules:
+The list is the library's folder tree, and it is a ring: the same order is
+rotated so the file in progress is reachable at the top. Rotation rules:
 
-* **reset(sorted, anchor)** — rebuild, rotate so `anchor` (last/current file) is first.
+* **reset(root, anchor)** — rebuild the rows from the tree and rotate so
+  `anchor` (last/current file) is the first file.
 * **rotateTo(path)** — a tap on any row brings it to the top, preserving the
   relative order of everything else (`a b c d` + tap `c` → `c d a b`). The
   implementation rotates the *whole* list; rotating only a prefix gives the
   wrong result and used to be a bug.
 * **advanceFrom(current)** — finished file goes to the bottom, the new first
-  item is returned. End of queue → `null`, and the finished track stays loaded
+  file is returned. End of queue → `null`, and the finished track stays loaded
   so Play restarts it instead of doing nothing.
-* **retreatFrom(current)** — "previous file" pulls the last item to the top.
+* **retreatFrom(current)** — "previous file" steps back one file, wrapping to
+  the last one.
 * **rotateViewBackward() / rotateViewForward()** — discrete list swipes rotate
-  the queue head in either direction without changing the playing file. At the
-  top, a backward swipe prepends the last item; at the bottom, a forward swipe
-  moves the head to the tail. A playback selection/advance re-anchors the
-  current track's folder group at the top again.
+  one row in either direction without changing the playing file. At the top, a
+  backward swipe prepends the last row; at the bottom, a forward swipe moves the
+  head to the tail. A playback selection/advance re-anchors the current track at
+  the top again.
 
-`model/FileListRows` maps the queue to presentation rows without changing its
-order. A folder delimiter precedes each contiguous parent-folder run, and the
-last file in that run draws the closing rule. File subtitles therefore show
-only size/resume information instead of repeating the folder name.
+Because the rows include the separators, all of these move files and folder
+lines together — there is no second grouping pass that could disagree with the
+scan.
+
+### The list is the tree
+
+The queue is **one ordered list of rows**, not a list of files with delimiters
+computed around them. `model/QueueEntry` is one row — an audio file, a folder's
+opening row (icon + name) or its closing row (a bare rule, no name) — and
+`model/TreeOrder` produces them by walking the scanned tree depth first:
+
+```
+Dune                     <- opening row, depth 0
+    Part 1               <- opening row, depth 1 (indented 14 dp per level)
+    Chapter 01           <- Part 1's own files
+    Chapter 02
+    -------------------  <- closing row of Part 1 (a line, no name)
+Prologue                 <- Dune's own files come after its sub-folders
+-----------------------  <- closing row of Dune
+```
+
+Sub-folders come before a folder's own files, matching the Folders page; the
+library root is not named; folders that contain no audio anywhere are skipped,
+so a folder whose last file was deleted does not leave a pair of lines around
+nothing. `ScanResult.allFiles` is this order with the separators removed, so the
+play sequence and the visible order are the same thing.
+
+`PlayQueue` rotates *that* list: `Collections.rotate` over files **and**
+separators, never a re-sort. Whole rows move together, and the activity re-reads
+the live list (`FileListRows` → `AudioFileAdapter`) instead of grouping rows on
+every refresh. Because a ring has no start, a folder may straddle the wrap point
+— which is exactly why each folder has a closing line as well as an opening one.
+
+Rotation anchors the playing file: it is always the first *file* row. When it is
+the first file of its folder, the rows naming that folder (and its parents) lead
+it, as the flat list always did; otherwise the file itself is the head and the
+folder's closing line sits right below it. The activity scrolls to
+`AudioFileAdapter.firstFileRow()`, not to row 0.
+
+The separators are ordinary rows of the queue, so ListView recycles them through
+the same view type, `DiscreteListView`'s whole-row browsing moves them like any
+other row, and a separator is simply not clickable (`isEnabled()` is false).
+
+Folder separators are `layout/item_folder_delimiter.xml`: the icon and the name
+are hidden for a closing row, which leaves only the full-width rule, and the
+adapter indents the whole row by `depth × folder_indent` (14 dp from
+`dimens.xml`) so nesting is visible at a glance.
 
 `ui/DiscreteListView` owns vertical swipe detection only while the setting is
 on. It bypasses ListView's pixel drag/fling and adjusts the bottom padding to
 an integer number of rows. A file row (`layout/item_audio.xml`) is a
 `FrameLayout` that wraps its content with a 60 dp minimum: names can use two
-lines and the size / saved-position line stays fully visible. The folder-group
-closing rule is overlaid at the bottom, not stacked under the text. Compact
+lines and the size / saved-position line stays fully visible. Compact
 8 dp text padding and 1 dp row margins keep the gaps between files small.
 
 In discrete mode `AudioFileAdapter.discreteRowHeightPx()` measures a one-line
@@ -150,8 +195,8 @@ release applies no delta twice. A short swipe still moves one row. Horizontal
 swipes belong to `SwipePager`, and taps on the row/delete button stay normal.
 The activity applies the row steps and queue rotations on the main thread.
 
-`PlayQueue`, `FileListRows` and `DiscreteDrag` are pure Java (no Android
-imports) and are covered by the JVM tests.
+`PlayQueue`, `QueueEntry`, `TreeOrder`, `FileListRows` and `DiscreteDrag` are
+pure Java (no Android imports) and are covered by the JVM tests.
 
 ## Scanning (`Scanner`, `Library`)
 
@@ -163,6 +208,8 @@ walk on the caller's thread. It:
   mka mp4 3gp amr`, upper/lower case),
 * builds `FolderNode`s with recursive file counts,
 * sorts files and folders with `NaturalSort`,
+* flattens the sorted tree into the unified order with `TreeOrder` (a folder's
+  sub-folders first, then its own files — see above),
 * reports progress every 250 files and honours thread interruption.
 
 `Library` runs it on a single low-priority daemon executor, increments a

@@ -56,25 +56,52 @@ else
     KEYTOOL="$(command -v keytool)"
 fi
 
-AAPT2="$BUILD_TOOLS_DIR/aapt2"
-D8="$BUILD_TOOLS_DIR/d8"
-ZIPALIGN="$BUILD_TOOLS_DIR/zipalign"
-APKSIGNER="$BUILD_TOOLS_DIR/apksigner"
+# Tools come in two flavours:
+#   * native build-tools binaries plus a full JDK (a normal SDK install);
+#   * Java jars (d8, apksigner) plus a standalone Eclipse compiler when the
+#     sandbox only has a runtime JDK and no native build-tools. The jars are
+#     looked up by name in the build-tools directory, then through D8_JAR /
+#     APKSIGNER_JAR / ECJ_JAR; aapt2 always has to be a real binary (AAPT2=...).
+AAPT2="${AAPT2:-$BUILD_TOOLS_DIR/aapt2}"
+D8="${D8:-$BUILD_TOOLS_DIR/d8}"
+ZIPALIGN="${ZIPALIGN:-$BUILD_TOOLS_DIR/zipalign}"
+APKSIGNER="${APKSIGNER:-$BUILD_TOOLS_DIR/apksigner}"
+D8_JAR="${D8_JAR:-$BUILD_TOOLS_DIR/d8.jar}"
+APKSIGNER_JAR="${APKSIGNER_JAR:-$BUILD_TOOLS_DIR/apksigner.jar}"
+ECJ_JAR="${ECJ_JAR:-$BUILD_TOOLS_DIR/ecj-3.45.0.jar}"
 
-for tool in "$AAPT2" "$D8" "$ZIPALIGN" "$APKSIGNER" "$JAVAC" "$JAVA" "$KEYTOOL"; do
+for tool in "$AAPT2" "$JAVA" "$KEYTOOL"; do
     if [[ ! -x "$tool" ]]; then
         echo "error: missing tool: $tool" >&2
+        echo "       (set AAPT2=/path/to/aapt2 when the SDK has no native build-tools)" >&2
         exit 1
     fi
 done
+if [[ ! -x "$JAVAC" && ! -f "$ECJ_JAR" ]]; then
+    echo "error: neither javac nor an Eclipse compiler jar was found" >&2
+    echo "       (set ECJ_JAR=/path/to/ecj.jar)" >&2
+    exit 1
+fi
+if [[ ! -x "$D8" && ! -f "$D8_JAR" ]]; then
+    echo "error: missing d8 (set D8_JAR=/path/to/d8.jar)" >&2
+    exit 1
+fi
+if [[ ! -x "$ZIPALIGN" ]]; then
+    echo "note: no native zipalign; using tools/zipalign.py" >&2
+    ZIPALIGN="$PROJECT/tools/zipalign.py"
+fi
+if [[ ! -x "$APKSIGNER" && ! -f "$APKSIGNER_JAR" ]]; then
+    echo "error: missing apksigner (set APKSIGNER_JAR=/path/to/apksigner.jar)" >&2
+    exit 1
+fi
 if [[ ! -f "$ANDROID_JAR" ]]; then
     echo "error: android.jar not found (looked at $ANDROID_JAR)" >&2
     exit 1
 fi
 
 APP_NAME="AudiobooksMinimalPlayer"
-VERSION_CODE="10"
-VERSION_NAME="1.7.1"
+VERSION_CODE="11"
+VERSION_NAME="1.7.2"
 MIN_SDK="24"
 TARGET_SDK="34"
 
@@ -116,21 +143,40 @@ echo "== aapt2 link"
     --version-name "$VERSION_NAME" \
     --auto-add-overlay
 
-echo "== javac"
+echo "== compile"
 find "$SRC_DIR" "$GEN" -name '*.java' -print > "$WORK/sources.txt"
-"$JAVAC" \
-    -encoding UTF-8 \
-    -source 8 -target 8 \
-    -Xlint:-options \
-    -bootclasspath "$ANDROID_JAR" \
-    -classpath "$ANDROID_JAR" \
-    -d "$CLASSES" \
-    @"$WORK/sources.txt"
+if [[ -x "$JAVAC" ]]; then
+    "$JAVAC" \
+        -encoding UTF-8 \
+        -source 8 -target 8 \
+        -Xlint:-options \
+        -bootclasspath "$ANDROID_JAR" \
+        -classpath "$ANDROID_JAR" \
+        -d "$CLASSES" \
+        @"$WORK/sources.txt"
+else
+    # Runtime-only JDK: the Eclipse batch compiler takes the same -source /
+    # -target / -classpath flags and compiles against android.jar.
+    "$JAVA" -cp "$ECJ_JAR" org.eclipse.jdt.internal.compiler.batch.Main \
+        -encoding UTF-8 \
+        -source 8 -target 8 \
+        -proceedOnError:Fatal \
+        -nowarn -proc:none \
+        -bootclasspath "$ANDROID_JAR" \
+        -classpath "$ANDROID_JAR" \
+        -d "$CLASSES" \
+        @"$WORK/sources.txt"
+fi
 
 echo "== d8"
 find "$CLASSES" -name '*.class' -print > "$WORK/classes.txt"
-"$D8" --release --min-api "$MIN_SDK" --lib "$ANDROID_JAR" \
-    --output "$DEX" @"$WORK/classes.txt"
+if [[ -x "$D8" ]]; then
+    "$D8" --release --min-api "$MIN_SDK" --lib "$ANDROID_JAR" \
+        --output "$DEX" @"$WORK/classes.txt"
+else
+    "$JAVA" -cp "$D8_JAR" com.android.tools.r8.D8 --release --min-api "$MIN_SDK" \
+        --lib "$ANDROID_JAR" --output "$DEX" @"$WORK/classes.txt"
+fi
 
 if [[ -f "$WORK/app-unsigned.apk" ]]; then
     (cd "$DEX" && zip -q -0 "$WORK/app-unsigned.apk" classes.dex)
@@ -140,7 +186,11 @@ else
 fi
 
 echo "== zipalign"
-"$ZIPALIGN" -f -p 4 "$WORK/app-unsigned.apk" "$WORK/app-aligned.apk"
+if [[ "$ZIPALIGN" == *.py ]]; then
+    python3 "$ZIPALIGN" --alignment 4 "$WORK/app-unsigned.apk" "$WORK/app-aligned.apk"
+else
+    "$ZIPALIGN" -f -p 4 "$WORK/app-unsigned.apk" "$WORK/app-aligned.apk"
+fi
 
 KEYSTORE="$PROJECT/build/debug.keystore"
 if [[ ! -f "$KEYSTORE" ]]; then
@@ -156,15 +206,26 @@ fi
 
 APK="$DIST/$APP_NAME-$VERSION_NAME.apk"
 echo "== apksigner"
-"$APKSIGNER" sign \
-    --ks "$KEYSTORE" \
-    --ks-key-alias androiddebugkey \
-    --ks-pass pass:android \
-    --key-pass pass:android \
-    --out "$APK" \
-    "$WORK/app-aligned.apk"
-
-"$APKSIGNER" verify --verbose "$APK" >/dev/null
+if [[ -x "$APKSIGNER" ]]; then
+    "$APKSIGNER" sign \
+        --ks "$KEYSTORE" \
+        --ks-key-alias androiddebugkey \
+        --ks-pass pass:android \
+        --key-pass pass:android \
+        --out "$APK" \
+        "$WORK/app-aligned.apk"
+    "$APKSIGNER" verify --verbose "$APK" >/dev/null
+else
+    "$JAVA" -jar "$APKSIGNER_JAR" sign \
+        --ks "$KEYSTORE" \
+        --ks-key-alias androiddebugkey \
+        --ks-pass pass:android \
+        --key-pass pass:android \
+        --out "$APK" \
+        "$WORK/app-aligned.apk"
+    "$JAVA" -jar "$APKSIGNER_JAR" verify --verbose "$APK" \
+        | sed -n '/Verified using v[23] /p'
+fi
 
 echo
 echo "== done"

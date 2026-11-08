@@ -50,6 +50,8 @@
     <string name="scan_done">%1$d audio files found</string>
     <string name="audio_file">Audio file</string>
     <string name="folder_label">Folder</string>
+    <!-- Accessibility text of the nameless line that closes a folder group. -->
+    <string name="folder_closed">End of folder</string>
     <string name="parent_folder">Up one level</string>
     <string name="size_format">%1$s</string>
     <string name="folder_count">%1$d files</string>

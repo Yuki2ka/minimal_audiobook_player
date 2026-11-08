@@ -3,6 +3,31 @@
 > Updated as work progresses. See [PROGRESS.md](PROGRESS.md) for milestones and
 > verified build/test results.
 
+## v1.7.2 — built, needs a device check
+
+- [x] **The All-files list is a folder tree again.** `Scanner` used to flat-sort
+      every file by name, so a book's chapters interleaved with other folders
+      and the 1.6.0 "delimiters" were just name runs. New `model/TreeOrder`
+      walks the tree depth first (folder, its sub-folders, its own files) and
+      `ScanResult.allFiles` follows it.
+- [x] **Every folder is bracketed by two separators:** an opening row with the
+      folder icon, the name and a rule, and a closing row that is only the rule.
+      Rows are indented 14 dp per nesting level; folders with no audio at all
+      are skipped (also right after their last file was deleted).
+- [x] **Files and separators rotate as one list.** `PlayQueue` stores
+      `QueueEntry` rows, so tap / next / previous / discrete browsing rotate the
+      same rows; `FileListRows` maps them 1:1 to the adapter; the
+      `row_group_end` overlay was removed.
+- [x] The playing file stays the first file; when it is its folder's first
+      file, the naming rows lead it, as in 1.4.0.
+- [x] Tests 601 assertions, 0 failed; resource check (with new folder-tree
+      guards), full app Java compilation, versionCode 11,
+      `AudiobooksMinimalPlayer-1.7.2.apk` built, aligned and signed (v2 + v3).
+- [ ] Confirm on a device: a library with nested folders shows each book's
+      chapters together (never mixed with another folder), sub-folders are
+      indented and bracketed by lines, and playing a file in a first-level folder
+      keeps that folder's name row directly above the playing row.
+
 ## v1.7.1 — built, needs a device check
 
 - [x] **Smooth list gaps ~20% smaller**: `row_min_height` 64 → 60 dp, row
@@ -172,11 +197,14 @@
 
 ## Next: on-device QA (needs a phone or emulator; none in this sandbox)
 
-1. Install `artifacts/AudiobooksMinimalPlayer-1.7.1.apk` on **Android 7** (the
+1. Install `artifacts/AudiobooksMinimalPlayer-1.7.2.apk` on **Android 7** (the
    minimum) and on **Android 13/14**, then walk through:
    - first launch → permission card → grant → scan;
    - decline the permission and use the app folder;
    - choose a folder with sub-folders, non-Latin names, and `Chapter 2` / `Chapter 10`;
+   - in **All files**, check the tree: each book's chapters stay together under
+     its own name row, sub-folders appear indented and closed by a plain rule,
+     and playing a file keeps its folder's name row directly above it;
    - kill the app mid-chapter and reopen: position restored, list rotated to that file;
    - finish a chapter: it moves to the bottom, the next one starts, the saved row is deleted;
    - open a folder, play a file, leave, come back: the folder opens at that file;

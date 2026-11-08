@@ -178,10 +178,26 @@ if title is None or title.get(ANDROID + "singleLine") == "true" \
 subtitle = with_id(audio, "row_subtitle")
 if subtitle is None or subtitle.get(ANDROID + "singleLine") != "true":
     problems.append("item_audio.xml row_subtitle must stay one line for even row heights")
-group_end = with_id(audio, "row_group_end")
-if group_end is None or group_end.get(ANDROID + "layout_gravity") != "bottom":
-    problems.append("item_audio.xml row_group_end must overlay the bottom, not take "
-                    "height from the text")
+if with_id(audio, "row_group_end") is not None:
+    problems.append("item_audio.xml must not draw a group-closing rule: folders are "
+                    "closed by their own item_folder_delimiter row")
+
+# The All-files list draws a folder tree: a named separator opens every folder
+# and a nameless one (just the rule) closes it. The adapter swaps the two by
+# hiding the icon and the name, so both widgets must exist and the rule must be
+# the only element that is always visible.
+delimiter = layout("item_folder_delimiter.xml")
+if delimiter.get(ANDROID + "paddingStart") is None:
+    problems.append("item_folder_delimiter.xml needs paddingStart: nesting is shown "
+                    "by indenting this row")
+delimiter_icon = with_id(delimiter, "folder_delimiter_icon")
+delimiter_name = with_id(delimiter, "folder_delimiter_name")
+if delimiter_icon is None or delimiter_icon.tag != "ImageView":
+    problems.append("item_folder_delimiter.xml needs folder_delimiter_icon for the "
+                    "opening row (a closing row is a bare line)")
+if delimiter_name is None or delimiter_name.get(ANDROID + "singleLine") != "true":
+    problems.append("item_folder_delimiter.xml needs a single-line "
+                    "folder_delimiter_name for the opening row")
 
 panel = layout("player_panel.xml")
 fast_button = with_id(panel, "btn_fast_play")
@@ -231,6 +247,26 @@ for attr in ("layout_marginTop", "layout_marginBottom"):
 if re.search(r'<dimen name="row_discrete_height">\d+sp</dimen>', values_text):
     problems.append("a fixed sp row height inflates discrete gaps with the font "
                     "scale; measure a one-line row instead")
+if '<dimen name="folder_indent">' not in values_text:
+    problems.append("missing folder_indent: sub-folder separators in the All-files "
+                    "tree are indented by their nesting depth")
+
+# The unified list must stay a rotation of the scanned tree: files and folder
+# separators live in one queue. A flat "sort every file by name" would silently
+# bring back the bug where a book's chapters interleaved with another folder's.
+scanner_src = open(os.path.join(SRC, "io", "github", "yuki2ka", "audiobookplayer",
+                                "scan", "Scanner.java"), encoding="utf-8").read()
+if "TreeOrder.files(" not in scanner_src:
+    problems.append("Scanner must build the unified order from the folder tree "
+                    "(TreeOrder.files), not from a flat name sort")
+if "Collections.sort(allFiles" in scanner_src:
+    problems.append("Scanner must not flat-sort all files: the All-files list is a "
+                    "folder tree")
+queue_src = open(os.path.join(SRC, "io", "github", "yuki2ka", "audiobookplayer",
+                              "playback", "PlayQueue.java"), encoding="utf-8").read()
+if "QueueEntry" not in queue_src:
+    problems.append("PlayQueue must rotate files and folder separators together "
+                    "(one list of QueueEntry rows)")
 
 adapter_src = open(os.path.join(SRC, "io", "github", "yuki2ka", "audiobookplayer",
                                 "ui", "AudioFileAdapter.java"), encoding="utf-8").read()

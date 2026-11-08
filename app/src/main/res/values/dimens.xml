@@ -17,6 +17,9 @@
          file rows, while staying well above the 48dp touch minimum. -->
     <dimen name="row_min_height">60dp</dimen>
     <dimen name="folder_delimiter_height">32dp</dimen>
+    <!-- Extra start inset per folder nesting level in the All-files tree. A
+         sub-folder's separator starts one step right of its parent's. -->
+    <dimen name="folder_indent">14dp</dimen>
     <dimen name="play_button_width">88dp</dimen>
     <dimen name="tab_height">54dp</dimen>
     <dimen name="step_height">52dp</dimen>
